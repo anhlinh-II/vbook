@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ category.name }}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <!-- Header -->
+    {% include 'components/header.html' %}
+
+    <!-- Main Content -->
+    <div class="container mx-auto py-10 mt-20">
+        <!-- Tiêu đề thể loại -->
+        <div class="bg-sky-600 p-4 rounded-lg shadow-md mb-8">
+            <h1 class="text-3xl font-bold text-white text-center">{{ category.name }}</h1>
+        </div>
+
+        <!-- Danh sách sách -->
+        <div class="bg-white p-6 rounded-lg shadow-md">
+            <h2 class="text-xl font-semibold text-gray-700 mb-4">Danh sách sách</h2>
+            {% if books %}
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {% for book in books %}
+                        <div class="relative bg-white rounded-xl shadow-lg overflow-hidden transform transition-all duration-300 hover:scale-105 hover:shadow-xl">
+                            <!-- Card nội dung -->
+                            <div class="p-5">
+                                <h3 class="text-lg font-bold text-gray-900 mb-2 line-clamp-1">{{ book.title }}</h3>
+                                <p class="text-gray-700 text-sm mb-1">Tác giả: <span class="font-medium text-gray-800">{{ book.author }}</span></p>
+                                <p class="text-gray-700 text-sm mb-1">Thể loại: <span class="font-medium text-gray-800">{{ book.genre }}</span></p>
+                                {% if book.description %}
+                                    <p class="text-gray-600 text-sm line-clamp-3 mb-4">{{ book.description }}</p>
+                                {% else %}
+                                    <p class="text-gray-500 text-sm italic mb-4">Không có mô tả.</p>
+                                {% endif %}
+                                <!-- Nút hành động -->
+                                <div class="flex space-x-3">
+                                    <a href="{{ url_for('read_book', book_id=book.id) }}"
+                                       class="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 text-white text-center py-2 rounded-lg hover:from-blue-600 hover:to-blue-700 transition duration-200">
+                                        Đọc sách ngay
+                                    </a>
+                                    <a href="{{ url_for('book_detail', book_id=book.id) }}"
+                                       class="flex-1 bg-gradient-to-r from-gray-500 to-gray-600 text-white text-center py-2 rounded-lg hover:from-gray-600 hover:to-blue-700 transition duration-200">
+                                        Xem chi tiết
+                                    </a>
+                                </div>
+                            </div>
+                            <!-- Đường viền trang trí -->
+                            <div class="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-blue-500 to-blue-700"></div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p class="text-gray-600 text-center">Chưa có sách nào trong thể loại này.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Footer -->
+    {% include 'components/footer.html' %}
+</body>
+</html>

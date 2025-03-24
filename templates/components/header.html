@@ -15,11 +15,14 @@
                     <a class="text-gray-700 hover:text-sky-600 block" href="{{ url_for('home') }}">Trang chủ</a>
                 </li>
                 <li class="hover:bg-gray-200 rounded-md px-3 py-2">
-                    <a class="text-gray-700 hover:text-sky-600 block" href="{{ url_for('favorites') }}">Danh sách ưa
-                        thích</a>
+                    <a class="text-gray-700 hover:text-sky-600 block" href="{{ url_for('favorites') }}">Danh sách ưa thích</a>
                 </li>
-                <li class="hover:bg-gray-200 rounded-md px-3 py-2">
-                    <a class="text-gray-700 hover:text-sky-600 block" href="{{ url_for('reading') }}">Thể loại</a>
+                <!-- Thể loại (Dropdown) -->
+                <li class="relative group hover:bg-gray-200 rounded-md px-3 py-2">
+                    <a class="text-gray-700 hover:text-sky-600 block" href="#">Thể loại</a>
+                    <ul class="absolute left-0 hidden group-hover:block bg-white border rounded-md shadow-md w-40" id="category-dropdown">
+                        <!-- Danh sách thể loại sẽ được thêm động bằng JavaScript -->
+                    </ul>
                 </li>
                 <li class="hover:bg-gray-200 rounded-md px-3 py-2">
                     <a class="text-gray-700 hover:text-sky-600 block" href="{{ url_for('reading') }}">Đang đọc</a>
@@ -46,3 +49,30 @@
 
     </div>
 </header>
+
+<script>
+    // Hàm lấy danh sách thể loại từ API
+    async function fetchCategories() {
+        const response = await fetch('/api/categories');
+        const categories = await response.json();
+        const dropdown = document.getElementById('category-dropdown');
+        dropdown.innerHTML = ''; // Xóa nội dung cũ
+
+        if (categories.length === 0) {
+            return; // Nếu không có thể loại, không hiển thị gì
+        }
+
+        // Thêm từng thể loại vào dropdown
+        categories.forEach(category => {
+            const item = document.createElement('li');
+            item.innerHTML = `<a href="/category/${category.slug}" class="block px-4 py-2 text-gray-700 hover:bg-gray-100 hover:text-sky-600">${category.name}</a>`;
+            dropdown.appendChild(item);
+        });
+    }
+
+    // Gọi hàm khi trang tải
+    document.addEventListener('DOMContentLoaded', fetchCategories);
+
+    // Cập nhật danh sách thể loại định kỳ (mỗi 10 giây)
+    setInterval(fetchCategories, 10000);
+</script>

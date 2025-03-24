@@ -1,14 +1,27 @@
-from flask import render_template, request, redirect, url_for, session, flash
-from flask import Flask
-from flask_sqlalchemy import SQLAlchemy
+import os
+from flask import Flask, render_template, jsonify, request, redirect, url_for, session, flash
+from flask_login import LoginManager, UserMixin, login_user, logout_user, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
-
-from models import db, User
+from werkzeug.utils import secure_filename
+from models import db, Category, User, Book
 
 app = Flask(__name__)
 
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///books.db'
+# Cấu hình Flask
+app.config['SECRET_KEY'] = 'your-secret-key'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///categories.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['UPLOAD_FOLDER'] = 'static/uploads'  # Thư mục lưu file upload
+ALLOWED_EXTENSIONS = {'.pdf', '.epub'}  # Các định dạng file cho phép
+
+# Đảm bảo thư mục upload tồn tại
+if not os.path.exists(app.config['UPLOAD_FOLDER']):
+    os.makedirs(app.config['UPLOAD_FOLDER'])
+
+# Hàm kiểm tra định dạng file
+def allowed_file(filename):
+    return os.path.splitext(filename)[1].lower() in ALLOWED_EXTENSIONS
+
 
 db.init_app(app)  # Khởi tạo SQLAlchemy với Flask app
 
@@ -79,12 +92,166 @@ books = [
 def home():
     return render_template('home.html', books=books)
 
+# API để lấy danh sách thể loại sách
+@app.route('/api/categories', methods=['GET'])
+def get_categories():
+    categories = Category.query.all()
+    return jsonify([{'id': cat.id, 'name': cat.name, 'slug': cat.slug} for cat in categories])
+
+@app.route('/admin/add_category', methods=['POST'])
+def add_category():
+    name = request.form.get('name')
+    slug = request.form.get('slug')
+
+    if not name or not slug:
+        flash("Vui lòng nhập đầy đủ thông tin.", "danger")
+        return redirect(url_for('admin_panel'))
+
+    # Kiểm tra slug đã tồn tại chưa
+    existing_category = Category.query.filter_by(slug=slug).first()
+    if existing_category:
+        flash("Slug đã tồn tại, vui lòng nhập slug khác.", "danger")
+        return redirect(url_for('admin_panel'))
+
+    # Nếu slug chưa tồn tại, thêm vào database
+    new_category = Category(name=name, slug=slug)
+    db.session.add(new_category)
+    db.session.commit()
+    
+    flash("Thể loại đã được thêm thành công!", "success")
+    return redirect(url_for('admin_panel'))
+
+# Route để admin sửa thể loại
+@app.route('/admin/edit_category/<int:id>', methods=['POST'])
+def edit_category(id):
+    category = Category.query.get_or_404(id)
+    category.name = request.form.get('name')
+    category.slug = request.form.get('slug')
+    db.session.commit()
+    return redirect(url_for('admin_panel'))
+
+# Route để admin xóa thể loại
+@app.route('/admin/delete_category/<int:id>', methods=['POST'])
+def delete_category(id):
+    category = Category.query.get_or_404(id)
+    db.session.delete(category)
+    db.session.commit()
+    return redirect(url_for('admin_panel'))
+
+# Route để admin xem danh sách thể loại
+@app.route('/admin')
+def admin_panel():
+    categories = Category.query.all()
+    # Lấy danh sách sách cho mỗi thể loại
+    for category in categories:
+        category.books = Book.query.filter_by(genre=category.name).all()
+    return render_template('admin.html', categories=categories)
+
+# Route để xem trang thể loại
+@app.route('/category/<slug>')
+def category_page(slug):
+    category = Category.query.filter_by(slug=slug).first_or_404()
+    return render_template('category.html', category=category)
+
+# Route để xem danh sách sách theo thể loại
+@app.route('/category/<slug>')
+def category(slug):
+    category = Category.query.filter_by(slug=slug).first_or_404()
+    books = Book.query.filter_by(genre=category.name).all()
+    print(f"Category name: {category.name}")
+    print(f"Books: {books}")
+    return render_template('category.html', category=category, books=books)
+
+
+# Route để thêm sách
+@app.route('/admin/add_book', methods=['POST'])
+def add_book():
+    title = request.form.get('title')
+    author = request.form.get('author')
+    genre = request.form.get('genre')
+    description = request.form.get('description')
+    file = request.files.get('book_file')
+
+    if not file or not allowed_file(file.filename):
+        flash('Vui lòng upload file PDF hoặc ePub hợp lệ!', 'error')
+        return redirect(url_for('admin_panel'))
+
+    # Lưu file vào thư mục uploads
+    filename = secure_filename(file.filename)
+    file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+    file.save(file_path)
+
+    # Tạo sách mới và lưu vào database
+    new_book = Book(
+        title=title,
+        author=author,
+        genre=genre,
+        description=description,
+        file_path=f"/{file_path}"
+    )
+    db.session.add(new_book)
+    db.session.commit()
+
+    flash('Thêm sách thành công!', 'success')
+    return redirect(url_for('admin_panel'))
 
 @app.route('/favorites')
 def favorites():
     return render_template('favorites.html')
 
+# Route để xem chi tiết sách
+@app.route('/book/<int:book_id>')
+def book_detail(book_id):
+    book = Book.query.get_or_404(book_id)
+    return render_template('bookDetails.html', book=book)
 
+# Route để đọc sách
+@app.route('/book/<int:book_id>/read')
+def read_book(book_id):
+    book = Book.query.get_or_404(book_id)
+    return render_template('read_book.html', book=book)
+
+# Route để chỉnh sửa sách
+@app.route('/admin/edit_book/<int:book_id>', methods=['POST'])
+def edit_book(book_id):
+    book = Book.query.get_or_404(book_id)
+    book.title = request.form.get('title')
+    book.author = request.form.get('author')
+    book.genre = request.form.get('genre')
+    book.description = request.form.get('description')
+
+    # Xử lý file upload (nếu có)
+    file = request.files.get('book_file')
+    if file and file.filename:
+        if not allowed_file(file.filename):
+            flash('Chỉ hỗ trợ file PDF hoặc ePub!', 'error')
+            return redirect(url_for('admin_panel'))
+        # Xóa file cũ nếu có
+        if book.file_path and os.path.exists(book.file_path[1:]):  # Bỏ dấu / đầu tiên
+            os.remove(book.file_path[1:])
+        # Lưu file mới
+        filename = secure_filename(file.filename)
+        file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        file.save(file_path)
+        book.file_path = f"/{file_path}"
+
+    db.session.commit()
+    flash('Chỉnh sửa sách thành công!', 'success')
+    return redirect(url_for('admin_panel'))
+
+# Route để xóa sách
+@app.route('/admin/delete_book/<int:book_id>', methods=['POST'])
+def delete_book(book_id):
+    book = Book.query.get_or_404(book_id)
+    # Xóa file sách nếu có
+    if book.file_path and os.path.exists(book.file_path[1:]):  # Bỏ dấu / đầu tiên
+        os.remove(book.file_path[1:])
+    db.session.delete(book)
+    db.session.commit()
+    flash('Xóa sách thành công!', 'success')
+    return redirect(url_for('admin_panel'))
+
+# API đang đọc sách
 @app.route('/reading')
 def reading():
     return render_template('reading.html')

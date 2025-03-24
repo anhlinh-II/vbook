@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Đọc sách - {{ book.title }}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <!-- Header -->
+    {% include 'components/header.html' %}
+
+    <!-- Main Content -->
+    <div class="container mx-auto py-10 mt-20">
+        <h1 class="text-3xl font-bold text-gray-800 mb-6 text-center">Đọc sách: {{ book.title }}</h1>
+        <div class="bg-white p-6 rounded-lg shadow-md">
+            <p class="text-gray-600 text-center">Đây là trang đọc sách (placeholder). File sách: <a href="{{ book.file_path }}" class="text-blue-500 hover:underline">Tải về</a></p>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    {% include 'components/footer.html' %}
+</body>
+</html>
