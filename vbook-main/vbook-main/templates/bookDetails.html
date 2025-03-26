@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <title>{{ book.title }} - Chi tiết sách</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Monoton&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100">
+{% include 'components/header.html' %}
+
+<main class="container mx-auto mt-28 px-6">
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed top-5 right-5 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg hidden">
+        <span id="toast-message"></span>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow-md flex gap-10">
+        <!-- Hình ảnh sách -->
+        <img alt="{{ book.title }}" class="w-64 h-96 object-cover rounded-lg shadow-md" src="{{ book.image }}">
+
+        <!-- Thông tin sách -->
+        <div class="flex-1">
+            <h2 class="text-4xl font-bold text-gray-800">{{ book.title }}</h2>
+            <p class="text-lg text-gray-600 mt-2">Tác giả: <span class="font-semibold">{{ book.author }}</span></p>
+            <p class="mt-4 text-gray-700">{{ book.description }}</p>
+
+            <p class="mt-4 text-lg text-gray-800">Thể loại:
+                <span class="text-sky-600 font-semibold">{{ book.genre }}</span>
+            </p>
+
+            <!-- Tổng Rating -->
+            <div class="mt-4 flex items-center">
+                <span class="text-lg font-semibold">Đánh giá:</span>
+                <span class="ml-2 text-yellow-500 text-xl">
+                    {% for _ in range((book.avg_rating or 0)|round) %} ⭐ {% endfor %}
+                </span>
+                <span class="ml-2 text-gray-700">({{ (book.avg_rating or 0)|round(1) }}/5)</span>
+            </div>
+
+            <div class="mt-6 flex items-center space-x-4">
+                <!-- Nút Đọc Ngay với Icon Quyển Sách -->
+              <a class="bg-sky-600 text-white px-5 py-2 rounded-md shadow-md hover:bg-sky-700 flex items-center space-x-2"
+                 href="{{ url_for('reading.add_to_reading_list', book_id=book.id) }}">
+                <i class="fas fa-book"></i>
+                <span>Đọc ngay</span>
+                </a>
+
+                <!-- Nút Thêm vào ưa thích với Icon Trái Tim -->
+                <button class="favorite-btn w-10 h-10 flex items-center justify-center bg-gray-200 rounded-full hover:bg-red-100 text-red-500"
+                        data-book-id="{{ book.id }}"
+                        data-is-favorited="{% if book.id in session.get('favorites', []) %}true{% else %}false{% endif %}">
+                    <i class="fas fa-heart {% if book.id in session.get('favorites', []) %}text-red-600{% else %}text-red-500{% endif %}"></i>
+                </button>
+
+                <!-- Nút Chia Sẻ với Icon Share -->
+                <a class="w-10 cursor-pointer h-10 flex items-center justify-center bg-gray-200 rounded-full hover:bg-gray-300 text-gray-600"
+                   href="#">
+                    <i class="fa-solid fa-share-nodes"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bình luận và Đánh giá -->
+    <div class="mt-10 bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-bold text-gray-800 mb-4">Bình luận của người đọc</h3>
+
+        <!-- Hiển thị bình luận -->
+        {% for comment in book.comments %}
+        <div class="border-b pb-3 mb-3">
+            <p class="font-semibold text-gray-900">{{ comment.user }}</p>
+            <div class="text-yellow-500">
+                {% for _ in range(comment.rating) %} ⭐ {% endfor %}
+            </div>
+            <p class="text-gray-700 mt-1">{{ comment.content }}</p>
+        </div>
+        {% endfor %}
+
+        <!-- Thêm bình luận mới -->
+        <div class="mt-6">
+            <h4 class="text-xl font-semibold text-gray-800">Thêm đánh giá của bạn</h4>
+            <form action="/submit_review/{{ book.id }}" class="mt-4" method="POST">
+                <div>
+                    <label class="font-semibold text-gray-700" for="rating">Đánh giá:</label>
+                    <select class="border border-gray-300 rounded-md p-2" id="rating" name="rating">
+                        <option value="5">⭐⭐⭐⭐⭐</option>
+                        <option value="4">⭐⭐⭐⭐</option>
+                        <option value="3">⭐⭐⭐</option>
+                        <option value="2">⭐⭐</option>
+                        <option value="1">⭐</option>
+                    </select>
+                </div>
+                <div class="mt-3">
+                    <label class="font-semibold text-gray-700" for="comment">Bình luận:</label>
+                    <textarea class="border border-gray-300 rounded-md p-2 w-full" id="comment" name="comment"
+                              rows="3"></textarea>
+                </div>
+                <button class="mt-4 bg-sky-600 text-white px-5 py-2 rounded-md hover:bg-sky-700" type="submit">
+                    Gửi đánh giá
+                </button>
+            </form>
+        </div>
+    </div>
+</main>
+
+{% include 'components/footer.html' %}
+
+<script>
+    console.log('Script loaded'); // Kiểm tra xem script có được tải không
+
+    // Hàm hiển thị toast notification
+    function showToast(message, isError = false) {
+        console.log('showToast called with message:', message); // Debug
+        const toast = document.getElementById('toast');
+        const toastMessage = document.getElementById('toast-message');
+        if (!toast || !toastMessage) {
+            console.error('Toast elements not found!');
+            return;
+        }
+        toastMessage.textContent = message;
+        toast.classList.remove('hidden', 'bg-green-500', 'bg-red-500');
+        toast.classList.add(isError ? 'bg-red-500' : 'bg-green-500');
+        toast.classList.add('block');
+        setTimeout(() => {
+            toast.classList.add('hidden');
+        }, 3000);
+    }
+
+    // Xử lý sự kiện nhấn nút yêu thích
+    const favoriteButtons = document.querySelectorAll('.favorite-btn');
+    console.log('Found favorite buttons:', favoriteButtons.length); // Debug
+
+    favoriteButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            console.log('Favorite button clicked'); // Debug
+            const bookId = this.getAttribute('data-book-id');
+            const isFavorited = this.getAttribute('data-is-favorited') === 'true';
+            const heartIcon = this.querySelector('i');
+
+            console.log('Book ID:', bookId, 'Is Favorited:', isFavorited); // Debug
+
+            // Nếu đã yêu thích, gửi yêu cầu xóa; nếu chưa, gửi yêu cầu thêm
+            const url = isFavorited ? `/favorites/remove/${bookId}` : `/add_to_favorites/${bookId}`;
+            console.log('Sending request to:', url); // Debug
+
+            fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            })
+            .then(response => {
+                console.log('Response status:', response.status); // Debug
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Response data:', data); // Debug
+                if (data.success) {
+                    // Cập nhật trạng thái nút
+                    if (isFavorited) {
+                        heartIcon.classList.remove('text-red-600');
+                        heartIcon.classList.add('text-red-500');
+                        this.setAttribute('data-is-favorited', 'false');
+                    } else {
+                        heartIcon.classList.remove('text-red-500');
+                        heartIcon.classList.add('text-red-600');
+                        this.setAttribute('data-is-favorited', 'true');
+                    }
+                    this.classList.toggle('bg-red-100');
+                    showToast(data.message);
+                } else {
+                    showToast(data.message, true);
+                }
+            })
+            .catch(error => {
+                console.error('Fetch error:', error);
+                showToast('Đã có lỗi xảy ra!', true);
+            });
+        });
+    });
+</script>
+</body>
+</html>

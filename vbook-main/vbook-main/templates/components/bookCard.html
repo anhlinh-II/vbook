@@ -1,0 +1,9 @@
+<div class="bg-white shadow-md rounded-lg p-4 w-80">
+    <a href="/bookDetails/{{ book.id }}">
+        <img src="{{ book.image }}" alt="{{ book.title }}"
+            class="w-full cursor-pointer h-full object-cover rounded-lg">
+    </a>
+    <h3 class="mt-2 font-bold text-lg">{{ book.title }}</h3>
+    <p class="text-gray-600 text-sm">{{ book.author }}</p>
+</div>
+

@@ -1,0 +1,38 @@
+<div x-data="carouselData()" class="relative w-full overflow-hidden">
+    <!-- Carousel container -->
+    <div class="flex transition-transform duration-300 ease-in-out"
+        :style="'transform: translateX(-' + (currentIndex * 340) + 'px)'">
+        {% for book in books %}
+            <div class="w-[400px] mx-2">
+                {% with book=book %}
+                    {% include 'components/bookCard.html' %}
+                {% endwith %}
+            </div>
+        {% endfor %}
+    </div>
+
+    <!-- Navigation buttons -->
+    <button @click="prev()" class="absolute left-0 top-1/2 transform -translate-y-1/2 bg-gray-700 text-white p-2 rounded-l-md">
+        &#10094;
+    </button>
+
+    <button @click="next()" class="absolute right-0 top-1/2 transform -translate-y-1/2 bg-gray-700 text-white p-2 rounded-r-md">
+        &#10095;
+    </button>
+</div>
+
+<script>
+function carouselData() {
+    return {
+        currentIndex: 0,
+        bookWidth: 220, // Chiều rộng 1 quyển sách (bao gồm margin)
+        maxIndex: {{ books|length }} - 1,
+        prev() {
+            this.currentIndex = Math.max(this.currentIndex - 1, 0);
+        },
+        next() {
+            this.currentIndex = Math.min(this.currentIndex + 1, this.maxIndex);
+        }
+    }
+}
+</script>
