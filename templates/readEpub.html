@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{{ title }} - EPUB Reader</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    #contentContainer * {
+      all: revert;
+    }
+    {{ styles | safe }}
+
+    /* Giữ Sidebar cố định khi cuộn */
+    .fixed-sidebar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 240px; /* Chiều rộng của sidebar */
+      height: 100vh; /* Chiều cao đầy đủ của màn hình */
+      overflow-y: auto; /* Thêm cuộn khi vượt quá chiều cao */
+      z-index: 1000; /* Đảm bảo sidebar nằm trên nội dung */
+    }
+
+    .content-area {
+      margin-left: 240px; /* Đẩy nội dung sang phải để tránh che phủ sidebar */
+    }
+  </style>
+</head>
+<body class="text-justify bg-gray-100">
+
+  <!-- Layout chính: Sidebar trái + Content phải -->
+  <div class="flex">
+
+    <!-- Sidebar: Chiều rộng cố định, luôn nằm bên trái -->
+    <div class="fixed-sidebar bg-white shadow-lg p-4 space-y-6">
+
+      <!-- Page Indicator -->
+      <div id="pageIndicator" class="bg-blue-600 text-white px-4 py-2 rounded-lg shadow text-center">
+        Trang 1/1
+      </div>
+
+      <!-- Page Input -->
+      <div id="pageInputContainer" class="flex items-center gap-2">
+        <input type="number" id="pageInput" min="1" value="1" class="w-16 p-2 text-center text-lg border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+        <button id="goToPageBtn" class="bg-blue-600 text-white px-3 py-2 rounded-lg hover:bg-blue-700 transition text-sm">Go</button>
+      </div>
+
+      <!-- Save Milestone Button -->
+      <button id="saveMilestoneBtn" class="bg-blue-600 text-white w-full px-4 py-2 rounded-lg hover:bg-blue-700 transition">
+        🔖 Đánh dấu trang
+      </button>
+
+      <!-- Milestone Container -->
+      <div id="milestoneContainer" class="h-[400px] overflow-y-auto bg-white border border-gray-300 rounded-lg p-3 shadow-inner">
+        <strong>Đã lưu:</strong>
+      </div>
+
+    </div>
+
+    <!-- Nội dung đọc -->
+    <div class="content-area flex-1 p-10">
+      <div id="contentContainer" class="max-w-5xl mx-auto bg-white p-8 shadow-lg rounded-lg">
+        {{ content | safe }}
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    const bookId = window.location.pathname.split('/')[2];
+    const milestoneKey = `milestones_book_${bookId}`;
+
+    function saveCurrentPage() {
+      const viewportHeight = window.innerHeight;
+      const currentPage = Math.ceil(window.scrollY / viewportHeight) + 1;
+      localStorage.setItem(`bookmarkPage_book_${bookId}`, currentPage);
+    }
+
+    function loadLastPage() {
+      const savedPage = localStorage.getItem(`bookmarkPage_book_${bookId}`);
+      if (savedPage) {
+        const viewportHeight = window.innerHeight;
+        window.scrollTo({ top: (savedPage - 1) * viewportHeight, behavior: "smooth" });
+      }
+    }
+
+    function updatePageIndicator() {
+      const container = document.getElementById("contentContainer");
+      const totalHeight = container.scrollHeight;
+      const viewportHeight = window.innerHeight;
+      const scrollTop = window.scrollY;
+      const totalPages = Math.ceil(totalHeight / viewportHeight);
+      const currentPage = Math.min(Math.ceil(scrollTop / viewportHeight) + 1, totalPages);
+      document.getElementById("pageIndicator").innerText = `Trang ${currentPage}/${totalPages}`;
+      document.getElementById("pageInput").max = totalPages;
+      saveCurrentPage();
+    }
+
+    function goToPage() {
+      const input = document.getElementById("pageInput");
+      const pageNumber = parseInt(input.value);
+      const viewportHeight = window.innerHeight;
+      const container = document.getElementById("contentContainer");
+      const totalPages = Math.ceil(container.scrollHeight / viewportHeight);
+      if (pageNumber >= 1 && pageNumber <= totalPages) {
+        window.scrollTo({ top: (pageNumber - 1) * viewportHeight, behavior: "smooth" });
+      } else {
+        alert("Số trang không hợp lệ!");
+      }
+    }
+
+    function saveMilestone() {
+      const currentPage = Math.ceil(window.scrollY / window.innerHeight) + 1;
+      let milestones = JSON.parse(localStorage.getItem(milestoneKey)) || [];
+      if (!milestones.includes(currentPage)) {
+        milestones.push(currentPage);
+        localStorage.setItem(milestoneKey, JSON.stringify(milestones));
+        loadMilestones();
+      }
+    }
+
+    function loadMilestones() {
+      const container = document.getElementById("milestoneContainer");
+      container.innerHTML = "<strong>Đã lưu:</strong>";
+      let milestones = JSON.parse(localStorage.getItem(milestoneKey)) || [];
+      milestones.forEach((page, index) => {
+        const div = document.createElement("div");
+        div.classList.add("flex", "justify-between", "items-center", "py-2", "border-b", "border-gray-200", "cursor-pointer", "hover:bg-gray-100");
+        div.textContent = `Trang ${page}`;
+        const delButton = document.createElement("button");
+        delButton.textContent = "✖";
+        delButton.classList.add("bg-red-500", "text-white", "px-2", "py-1", "rounded", "hover:bg-red-600", "transition", "ml-2");
+        delButton.addEventListener("click", (event) => {
+          event.stopPropagation();
+          deleteMilestone(index);
+        });
+        div.appendChild(delButton);
+        div.addEventListener("click", () => goToPageFromMilestone(page));
+        container.appendChild(div);
+      });
+    }
+
+    function deleteMilestone(index) {
+      let milestones = JSON.parse(localStorage.getItem(milestoneKey)) || [];
+      milestones.splice(index, 1);
+      localStorage.setItem(milestoneKey, JSON.stringify(milestones));
+      loadMilestones();
+    }
+
+    function goToPageFromMilestone(pageNumber) {
+      const viewportHeight = window.innerHeight;
+      window.scrollTo({ top: (pageNumber - 1) * viewportHeight, behavior: "smooth" });
+    }
+
+    window.addEventListener("beforeunload", saveCurrentPage);
+    window.onload = function() {
+      loadLastPage();
+      updatePageIndicator();
+      loadMilestones();
+    };
+    window.onscroll = updatePageIndicator;
+    document.getElementById("goToPageBtn").addEventListener("click", goToPage);
+    document.getElementById("saveMilestoneBtn").addEventListener("click", saveMilestone);
+  </script>
+</body>
+</html>

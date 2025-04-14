@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Kết quả tìm kiếm</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 text-gray-800">
+
+    <div class="max-w-5xl mx-auto px-4 py-8">
+        <h1 class="text-3xl font-semibold mb-6 text-sky-600">Kết quả tìm kiếm cho: "{{ query }}"</h1>
+
+        {% if books %}
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+                {% for book in books %}
+                    <a href="{{ url_for('book_details', book_id=book.id) }}"
+                       class="block bg-white rounded-lg shadow-md p-4 hover:shadow-lg hover:ring-2 hover:ring-sky-300 transition">
+                        <div class="font-bold text-lg mb-2">{{ book.title }}</div>
+                        <div class="text-sm text-gray-600">Tác giả: {{ book.author or 'Không rõ' }}</div>
+                        <div class="text-sm text-gray-500 mt-1 truncate">Thể loại: {{ book.category or 'Chưa phân loại' }}</div>
+                    </a>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="text-red-600 text-lg">Không tìm thấy sách nào phù hợp với từ khóa "{{ query }}".</div>
+        {% endif %}
+
+        <div class="mt-8">
+            <a href="{{ url_for('home') }}"
+               class="text-sky-600 hover:underline text-sm">
+                ← Quay về trang chủ
+            </a>
+        </div>
+    </div>
+
+</body>
+</html>

@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Danh sách yêu thích</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        /* Hiệu ứng hover cho card sách */
+        .book-card {
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .book-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+        }
+        /* Hiệu ứng fade cho toast */
+        .toast {
+            transition: opacity 0.5s ease;
+        }
+        .toast.hidden {
+            opacity: 0;
+        }
+        .toast.block {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen font-sans">
+    <!-- Nhúng header -->
+    {% include 'components/header.html' %}
+
+    <!-- Main content -->
+    <main class="container mx-auto mt-24 px-6 min-h-screen">
+        <header class="text-center mt-10">
+            <h1 class="text-4xl font-extrabold text-gray-900">Danh sách yêu thích của bạn</h1>
+            <p class="text-lg text-gray-600 mt-2">Những cuốn sách bạn đã đánh dấu là yêu thích.</p>
+        </header>
+
+        <!-- Toast Notification -->
+        <div id="toast" class="toast fixed top-5 right-5 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg hidden">
+            <span id="toast-message"></span>
+        </div>
+
+        <section class="mt-10 max-w-5xl w-full mx-auto">
+            <div class="space-y-6" id="book-list">
+                {% if books %}
+                    {% for book in books %}
+                    <div class="book-card bg-white p-6 rounded-xl shadow-md relative">
+                        <div class="flex flex-col sm:flex-row items-center gap-6">
+                            <!-- Ảnh bìa sách -->
+                            <img src="{{ book.image }}" alt="{{ book.title }}" class="w-32 h-48 object-cover rounded-lg">
+                            <div class="flex-1">
+                                <!-- Tiêu đề và tác giả -->
+                                <h2 class="text-2xl font-semibold text-gray-800 mb-2 truncate">{{ book.title }}</h2>
+                                <p class="text-gray-600 mb-2">Tác giả: <span class="font-medium">{{ book.author }}</span></p>
+                                <!-- Mô tả ngắn -->
+                                <p class="text-gray-500 text-sm mb-4 line-clamp-3">{{ book.description }}</p>
+                                <!-- Nút hành động -->
+                                <div class="flex space-x-3">
+                                    <a href="{{ url_for('book_details', book_id=book.id) }}"
+                                       class="inline-block bg-gray-200 text-gray-800 px-4 py-2 rounded-md hover:bg-gray-300 transition">
+                                        Xem chi tiết
+                                    </a>
+                                    <a href="{{ url_for('readEpub.read_epub', book_id=book.id) }}"
+                                       class="inline-block bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition">
+                                        Đọc ngay
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Nút xóa -->
+                        <button data-book-id="{{ book.id }}"
+                                class="remove-favorite-btn absolute top-4 right-4 text-red-500 hover:text-red-700 transition">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="text-center py-12">
+                        <p class="text-gray-600 text-lg">Bạn chưa có sách nào trong danh sách yêu thích.</p>
+                        <a href="{{ url_for('home') }}"
+                           class="mt-4 inline-block bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 transition">
+                            Khám phá sách ngay
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </section>
+    </main>
+
+    <!-- Nhúng footer -->
+    <footer class="mt-10 w-full">
+        {% include 'components/footer.html' %}
+    </footer>
+
+    <script>
+        // Hàm hiển thị toast notification
+        function showToast(message, isError = false) {
+            console.log('showToast called with message:', message);
+            const toast = document.getElementById('toast');
+            const toastMessage = document.getElementById('toast-message');
+            if (!toast || !toastMessage) {
+                console.error('Toast elements not found!');
+                return;
+            }
+            toastMessage.textContent = message;
+            toast.classList.remove('hidden', 'bg-green-500', 'bg-red-500');
+            toast.classList.add(isError ? 'bg-red-500' : 'bg-green-500');
+            toast.classList.add('block');
+            console.log('Toast should be visible now');
+            setTimeout(() => {
+                toast.classList.remove('block');
+                toast.classList.add('hidden');
+                console.log('Toast hidden after 3 seconds');
+            }, 3000);
+        }
+
+        // Xử lý sự kiện xóa khỏi danh sách yêu thích
+        document.querySelectorAll('.remove-favorite-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                console.log('Remove button clicked');
+                const bookId = this.getAttribute('data-book-id');
+                console.log('Book ID to remove:', bookId);
+
+                fetch(`/favorites/remove/${bookId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                })
+                .then(response => {
+                    console.log('Response status:', response.status);
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('Response data:', data);
+                    if (data.success) {
+                        showToast(data.message);
+                        // Xóa sách khỏi giao diện
+                        this.closest('.book-card').remove();
+                        // Kiểm tra nếu không còn sách nào
+                        const bookList = document.getElementById('book-list');
+                        if (!bookList.querySelector('.book-card')) {
+                            bookList.innerHTML = '<div class="text-center py-12"><p class="text-gray-600 text-lg">Bạn chưa có sách nào trong danh sách yêu thích.</p><a href="{{ url_for('home') }}" class="mt-4 inline-block bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 transition">Khám phá sách ngay</a></div>';
+                        }
+                    } else {
+                        showToast(data.message, true);
+                    }
+                })
+                .catch(error => {
+                    console.error('Fetch error:', error);
+                    showToast('Đã có lỗi xảy ra!', true);
+                });
+            });
+        });
+    </script>
+</body>
+</html>
