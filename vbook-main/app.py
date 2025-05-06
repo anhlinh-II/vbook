@@ -1,7 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
-from models import db, User, Category, Book  # Ensure these are defined in models.py
+from models import db, User, Category, Book, Review  # Ensure these are defined in models.py
 from reading import reading_bp  # Import Blueprint from reading.py
 from readEpub import readEpub_bp
 from search_books import search_bp
@@ -159,14 +159,18 @@ def logout():
     return redirect(url_for('login'))
 
 
-@app.route('/bookDetails/<int:book_id>', methods=['GET', 'POST'])
+@app.route('/bookDetails/<int:book_id>', methods=['GET', 'POST'])  # Giữ nguyên POST nếu bạn có xử lý form khác ở đây
 def book_details(book_id):
-    books = Book.query.all()
-    book = next((b for b in books if b.id == book_id), None)
-    book = Book.query.get(book_id)
-    if not book:
-        return "Book not found", 404  # Thay abort(404)
-    return render_template('bookDetails.html', book=book)
+    book = Book.query.get_or_404(book_id)  # Sử dụng get_or_404 để tự động trả về 404 nếu không tìm thấy
+
+    # Lấy danh sách đánh giá cho sách này, sắp xếp theo thời gian mới nhất trước
+    # Cũng join với User để có thể lấy username
+    reviews = Review.query.filter_by(book_id=book.id).join(User).order_by(Review.timestamp.desc()).all()
+
+    # Tính toán điểm đánh giá trung bình (đã được xử lý bằng hybrid_property trong model Book)
+    # avg_rating = book.avg_rating
+
+    return render_template('bookDetails.html', book=book, reviews=reviews)
 
 @app.route('/account')
 def account():
@@ -368,6 +372,38 @@ def delete_book(book_id):
     db.session.commit()
     flash('Xóa sách thành công!', 'success')
     return redirect(url_for('admin_panel'))
+
+@app.route('/submit_review/<int:book_id>', methods=['POST'])
+def submit_review(book_id):
+    if 'id' not in session: # Kiểm tra xem user_id có trong session không
+        flash("Vui lòng đăng nhập để đánh giá.", "warning")
+        return redirect(url_for('login'))
+
+    user_id = session['id']
+    rating = request.form.get('rating')
+    comment = request.form.get('comment')
+
+    if not rating:
+        flash("Vui lòng chọn điểm đánh giá.", "danger")
+        return redirect(url_for('book_details', book_id=book_id))
+
+    # Kiểm tra xem người dùng đã đánh giá sách này chưa (tùy chọn)
+    existing_review = Review.query.filter_by(book_id=book_id, user_id=user_id).first()
+    if existing_review:
+        flash("Bạn đã đánh giá sách này rồi.", "info")
+        return redirect(url_for('book_details', book_id=book_id))
+
+    new_review = Review(
+        book_id=book_id,
+        user_id=user_id,
+        rating=int(rating),
+        comment=comment
+    )
+    db.session.add(new_review)
+    db.session.commit()
+
+    flash("Cảm ơn bạn đã đánh giá!", "success")
+    return redirect(url_for('book_details', book_id=book_id))
 
 # Register Blueprints
 app.register_blueprint(readEpub_bp)

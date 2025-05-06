@@ -13,13 +13,14 @@
 
 <main class="container mx-auto mt-28 px-6">
     <!-- Toast Notification -->
-    <div id="toast" class="fixed top-5 right-5 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg hidden">
+    <div class="fixed top-5 right-5 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg hidden" id="toast">
         <span id="toast-message"></span>
     </div>
 
     <div class="bg-white p-6 rounded-lg shadow-md flex gap-10">
         <!-- Hình ảnh sách -->
-        <img alt="{{ book.title }}" class="w-64 h-96 object-cover rounded-lg shadow-md" src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQoaj6IKVpPmobkqsRiNqlcfQ9kepfgkoTSwQ&s">
+        <img alt="{{ book.title }}" class="w-64 h-96 object-cover rounded-lg shadow-md"
+             src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQoaj6IKVpPmobkqsRiNqlcfQ9kepfgkoTSwQ&s">
 
         <!-- Thông tin sách -->
         <div class="flex-1">
@@ -35,17 +36,20 @@
             <div class="mt-4 flex items-center">
                 <span class="text-lg font-semibold">Đánh giá:</span>
                 <span class="ml-2 text-yellow-500 text-xl">
-                    {% for _ in range((book.avg_rating or 0)|round) %} ⭐ {% endfor %}
+                    {% for _ in range((book.avg_rating or 0)|int) %} ⭐ {% endfor %} {# Sử dụng int để làm tròn xuống #}
+                    {% if (book.avg_rating or 0)|int < 5 %}
+                        {% for _ in range(5 - (book.avg_rating or 0)|int) %} <span class="text-gray-300">⭐</span> {% endfor %}
+                    {% endif %}
                 </span>
-                <span class="ml-2 text-gray-700">({{ (book.avg_rating or 0)|round(1) }}/5)</span>
+                <span class="ml-2 text-gray-700">({{ (book.avg_rating or 0)|round(1) }}/5 từ {{ book.reviews.count() }} đánh giá)</span>
             </div>
 
             <div class="mt-6 flex items-center space-x-4">
                 <!-- Nút Đọc Ngay với Icon Quyển Sách -->
-              <a class="bg-sky-600 text-white px-5 py-2 rounded-md shadow-md hover:bg-sky-700 flex items-center space-x-2"
-                 href="{{ url_for('reading.add_to_reading_list', book_id=book.id) }}">
-                <i class="fas fa-book"></i>
-                <span>Đọc ngay</span>
+                <a class="bg-sky-600 text-white px-5 py-2 rounded-md shadow-md hover:bg-sky-700 flex items-center space-x-2"
+                   href="{{ url_for('reading.add_to_reading_list', book_id=book.id) }}">
+                    <i class="fas fa-book"></i>
+                    <span>Đọc ngay</span>
                 </a>
 
                 <!-- Nút Thêm vào ưa thích với Icon Trái Tim -->
@@ -66,42 +70,57 @@
 
     <!-- Bình luận và Đánh giá -->
     <div class="mt-10 bg-white p-6 rounded-lg shadow-md">
-        <h3 class="text-2xl font-bold text-gray-800 mb-4">Bình luận của người đọc</h3>
+        <h3 class="text-2xl font-bold text-gray-800 mb-4">Bình luận và Đánh giá của người đọc</h3>
 
-        <!-- Hiển thị bình luận -->
-        {% for comment in book.comments %}
+        {% if reviews %}
+        {% for review_item in reviews %} {# Đổi tên biến để tránh trùng với biến 'review' trong vòng lặp #}
         <div class="border-b pb-3 mb-3">
-            <p class="font-semibold text-gray-900">{{ comment.user }}</p>
+            <p class="font-semibold text-gray-900">
+                {{ review_item.user.username if review_item.user else "Người dùng ẩn danh" }}
+            </p>
             <div class="text-yellow-500">
-                {% for _ in range(comment.rating) %} ⭐ {% endfor %}
+                {% for _ in range(review_item.rating) %} ⭐ {% endfor %}
+                {% if review_item.rating < 5 %}
+                {% for _ in range(5 - review_item.rating) %} <span class="text-gray-300">⭐</span> {% endfor %}
+                {% endif %}
             </div>
-            <p class="text-gray-700 mt-1">{{ comment.content }}</p>
+            <p class="text-gray-700 mt-1">{{ review_item.comment }}</p>
+            <p class="text-xs text-gray-500 mt-1">{{ review_item.timestamp.strftime('%d-%m-%Y %H:%M') }}</p>
         </div>
         {% endfor %}
+        {% else %}
+        <p class="text-gray-600">Chưa có đánh giá nào cho sách này. Hãy là người đầu tiên đánh giá!</p>
+        {% endif %}
 
-        <!-- Thêm bình luận mới -->
         <div class="mt-6">
             <h4 class="text-xl font-semibold text-gray-800">Thêm đánh giá của bạn</h4>
-            <form action="/submit_review/{{ book.id }}" class="mt-4" method="POST">
+            {% if 'id' in session %} {# Chỉ hiển thị form nếu người dùng đã đăng nhập #}
+            <form action="{{ url_for('submit_review', book_id=book.id) }}" class="mt-4" method="POST">
                 <div>
-                    <label class="font-semibold text-gray-700" for="rating">Đánh giá:</label>
-                    <select class="border border-gray-300 rounded-md p-2" id="rating" name="rating">
-                        <option value="5">⭐⭐⭐⭐⭐</option>
-                        <option value="4">⭐⭐⭐⭐</option>
-                        <option value="3">⭐⭐⭐</option>
-                        <option value="2">⭐⭐</option>
-                        <option value="1">⭐</option>
+                    <label class="font-semibold text-gray-700 block mb-1" for="rating">Đánh giá:</label>
+                    <select class="border border-gray-300 rounded-md p-2" id="rating" name="rating" required>
+                        <option disabled selected value="">Chọn số sao</option>
+                        <option value="5">⭐⭐⭐⭐⭐ (Tuyệt vời)</option>
+                        <option value="4">⭐⭐⭐⭐ (Rất tốt)</option>
+                        <option value="3">⭐⭐⭐ (Tốt)</option>
+                        <option value="2">⭐⭐ (Khá)</option>
+                        <option value="1">⭐ (Tệ)</option>
                     </select>
                 </div>
                 <div class="mt-3">
-                    <label class="font-semibold text-gray-700" for="comment">Bình luận:</label>
+                    <label class="font-semibold text-gray-700 block mb-1" for="comment">Bình luận (tùy chọn):</label>
                     <textarea class="border border-gray-300 rounded-md p-2 w-full" id="comment" name="comment"
-                              rows="3"></textarea>
+                              placeholder="Chia sẻ cảm nhận của bạn..." rows="3"></textarea>
                 </div>
                 <button class="mt-4 bg-sky-600 text-white px-5 py-2 rounded-md hover:bg-sky-700" type="submit">
                     Gửi đánh giá
                 </button>
             </form>
+            {% else %}
+            <p class="text-gray-700 mt-2">Vui lòng <a class="text-sky-600 hover:underline"
+                                                      href="{{ url_for('login', next=request.url) }}">đăng nhập</a> để gửi đánh
+                giá.</p>
+            {% endif %}
         </div>
     </div>
 </main>
