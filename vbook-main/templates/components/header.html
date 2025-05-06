@@ -1,0 +1,114 @@
+<header class="fixed top-0 left-0 w-full bg-white shadow-md z-10">
+    <style>
+    #category-dropdown::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    #category-dropdown::-webkit-scrollbar-thumb {
+        background-color: #cbd5e1; /* Màu xám nhẹ */
+        border-radius: 3px;
+    }
+
+    #category-dropdown::-webkit-scrollbar-track {
+        background: transparent;
+    }
+    </style>
+
+    <div class="container mx-auto flex justify-between items-center py-4 px-20">
+        <!-- Logo -->
+        <h1 class="text-3xl font-bold text-sky-700" style="font-family: 'Monoton', cursive;">
+            <a href="{{ url_for('home') }}">VBook</a>
+        </h1>
+
+        <!-- Search Bar -->
+        <form action="{{ url_for('search_books.search_books') }}" method="get">
+            <input
+                class="px-4 py-2 w-72 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-sky-500 shadow-sm"
+                placeholder="Tìm kiếm sách..."
+                type="text"
+                name="q">
+        </form>
+
+        <!-- Navigation -->
+        <nav>
+            <ul class="flex space-x-6 font-bold items-center">
+                <li class="hover:bg-gray-200 rounded-md px-3 py-2">
+                    <a class="text-gray-700 hover:text-sky-600 block" href="{{ url_for('home') }}">Trang chủ</a>
+                </li>
+                <li class="hover:bg-gray-200 rounded-md px-3 py-2">
+                    <a class="text-gray-700 hover:text-sky-600 block" href="{{ url_for('favorites') }}">Danh sách ưa thích</a>
+                </li>
+                <!-- Thể loại (Dropdown) -->
+                <li class="relative group hover:bg-gray-200 rounded-md px-3 py-2">
+                    <a class="text-gray-700 hover:text-sky-600 block cursor-pointer">Thể loại</a>
+                    <ul class="absolute left-0 hidden group-hover:block bg-white border border-gray-200 rounded-md shadow-lg w-48 z-20 max-h-64 overflow-y-auto"
+                        id="category-dropdown">
+                    <li class="px-4 py-2 text-gray-500">Đang tải...</li> <!-- Placeholder while fetching -->
+                    </ul>
+                </li>
+
+                <li class="hover:bg-gray-200 rounded-md px-3 py-2">
+                    <a class="text-gray-700 hover:text-sky-600 block" href="{{ url_for('reading.reading') }}">Đang đọc</a>
+                </li>
+                {% if 'user' in session %}
+                <li class="relative group">
+                    <a href="{{ url_for('account') }}">
+                        <img alt="Avatar" class="w-10 h-10 rounded-full border border-gray-300 cursor-pointer"
+                             src="{{ session['avatar_url'] }}">
+                    </a>
+                    <ul class="absolute right-0 hidden group-hover:block bg-white border border-gray-200 rounded-md shadow-lg w-32 z-20">
+                        <li class="px-4 py-2 hover:bg-gray-100">
+                            <a class="text-gray-700 hover:text-sky-600 block" href="{{ url_for('logout') }}">Đăng xuất</a>
+                        </li>
+                    </ul>
+                </li>
+                {% else %}
+                <li class="hover:bg-gray-200 rounded-md px-3 py-2">
+                    <a class="text-gray-700 hover:text-sky-600 block" href="{{ url_for('login') }}">Đăng nhập</a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+    </div>
+</header>
+
+<script>
+    // Function to fetch categories from API
+    async function fetchCategories() {
+        try {
+            const response = await fetch('/api/categories');
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            const categories = await response.json();
+            const dropdown = document.getElementById('category-dropdown');
+            dropdown.innerHTML = ''; // Clear previous content
+
+            if (categories.length === 0) {
+                const item = document.createElement('li');
+                item.innerHTML = '<span class="block px-4 py-2 text-gray-500">Chưa có thể loại</span>';
+                dropdown.appendChild(item);
+                return;
+            }
+
+            // Add each category to the dropdown
+            categories.forEach(category => {
+                const item = document.createElement('li');
+                item.innerHTML = `<a href="/category/${category.slug}" class="block px-4 py-2 text-gray-700 hover:bg-gray-100 hover:text-sky-600">${category.name}</a>`;
+                dropdown.appendChild(item);
+            });
+        } catch (error) {
+            console.error('Error fetching categories:', error);
+            const dropdown = document.getElementById('category-dropdown');
+            dropdown.innerHTML = '<li><span class="block px-4 py-2 text-red-500">Lỗi tải thể loại</span></li>';
+        }
+    }
+
+    // Call the function when the page loads
+    document.addEventListener('DOMContentLoaded', () => {
+        fetchCategories(); // Initial fetch
+    });
+
+    // Update categories periodically (every 10 seconds)
+    setInterval(fetchCategories, 10000);
+</script>

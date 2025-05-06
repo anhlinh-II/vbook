@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Danh sách đang đọc</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        /* Hiệu ứng hover cho card sách */
+        .book-card {
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .book-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans">
+    <!-- Nhúng header -->
+    {% include 'components/header.html' %}
+
+    <!-- Main content -->
+    <main class="container mx-auto mt-24 px-6 min-h-screen">
+        <h1 class="text-4xl font-bold text-gray-800 mb-8 text-center">Danh sách đang đọc</h1>
+
+        {% if books %}
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+                {% for book in books %}
+                    <div class="book-card bg-white rounded-xl shadow-lg overflow-hidden">
+                        <!-- Ảnh bìa sách -->
+                        <img src="{{ book.image }}" alt="{{ book.title }}" class="w-full h-64 object-cover">
+                        <div class="p-6">
+                            <!-- Tiêu đề và tác giả -->
+                            <h2 class="text-2xl font-semibold text-gray-800 mb-2 truncate">{{ book.title }}</h2>
+                            <p class="text-gray-600 mb-4">Tác giả: <span class="font-medium">{{ book.author }}</span></p>
+                            <!-- Mô tả ngắn -->
+                            <p class="text-gray-500 text-sm mb-4 line-clamp-3">{{ book.description }}</p>
+                            <!-- Nút hành động -->
+                            <div class="flex justify-between items-center">
+                                <div class="space-x-3">
+                                    <a href="{{ url_for('book_details', book_id=book.id) }}"
+                                       class="inline-block text-sky-600 hover:text-sky-800 font-medium transition">
+                                        Xem chi tiết
+                                    </a>
+                                    <a href="{{ url_for('readEpub.read_epub', book_id=book.id) }}"
+                                       class="inline-block text-green-600 hover:text-green-800 font-medium transition">
+                                        Tiếp tục đọc
+                                    </a>
+                                </div>
+                                <!-- Nút xóa -->
+                                <button onclick="removeFromReadingList({{ book.id }})"
+                                        class="text-red-500 hover:text-red-700 transition">
+                                    <i class="fas fa-trash-alt"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="text-center py-12">
+                <p class="text-gray-600 text-lg">Bạn chưa có sách nào trong danh sách đang đọc.</p>
+                <a href="{{ url_for('home') }}"
+                   class="mt-4 inline-block bg-sky-600 text-white px-6 py-2 rounded-md hover:bg-sky-700 transition">
+                    Khám phá sách ngay
+                </a>
+            </div>
+        {% endif %}
+    </main>
+
+    <!-- Nhúng footer -->
+    {% include 'components/footer.html' %}
+
+    <!-- Script để xử lý xóa sách khỏi danh sách -->
+    <script>
+        function removeFromReadingList(bookId) {
+            if (confirm('Bạn có chắc muốn xóa sách này khỏi danh sách đang đọc?')) {
+                fetch(`/reading/remove_from_reading_list/${bookId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert(data.message);
+                        location.reload(); // Tải lại trang để cập nhật danh sách
+                    } else {
+                        alert(data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Đã có lỗi xảy ra!');
+                });
+            }
+        }
+    </script>
+</body>
+</html>
