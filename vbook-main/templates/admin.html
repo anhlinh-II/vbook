@@ -2,357 +2,274 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quản lý thể loại</title>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <title>Quản lý sách</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* Animation cho thông báo */
-        @keyframes slideInOut {
-            0% {
-                transform: translateX(100%);
-                opacity: 0;
-            }
-            10% {
-                transform: translateX(0);
-                opacity: 1;
-            }
-            90% {
-                transform: translateX(0);
-                opacity: 1;
-            }
-            100% {
-                transform: translateX(-100%);
-                opacity: 0;
-            }
-        }
-
-        .flash-message {
-            animation: slideInOut 3s ease-in-out forwards;
-        }
-
-        /* Animation cho modal */
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: scale(0.95);
-            }
-            to {
-                opacity: 1;
-                transform: scale(1);
-            }
-        }
-
-        @keyframes fadeOut {
-            from {
-                opacity: 1;
-                transform: scale(1);
-            }
-            to {
-                opacity: 0;
-                transform: scale(0.95);
-            }
-        }
-
         .modal-open {
-            animation: fadeIn 0.3s ease-in-out forwards;
+            animation: fadeIn 0.3s ease-in-out;
         }
-
-        .modal-close {
-            animation: fadeOut 0.3s ease-in-out forwards;
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        .book-card:hover .book-image {
+            transform: scale(1.05);
+        }
+        .gradient-border {
+            background: linear-gradient(90deg, #3b82f6, #10b981);
         }
     </style>
 </head>
-<body class="bg-gray-100 min-h-screen">
-    <!-- Header -->
-    {% include 'components/header.html' %}
-
-    <!-- Main Content -->
-    <div class="container mx-auto py-10 mt-20">
-        <h1 class="text-3xl font-bold text-gray-800 mb-8 text-center">Quản lý thể loại</h1>
-
-        <!-- Thông báo flash -->
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                <div class="fixed top-20 right-0 z-50 space-y-2 w-80">
-                    {% for category, message in messages %}
-                        <div class="flash-message p-4 text-sm rounded-lg {{ 'bg-green-100 text-green-700' if category == 'success' else 'bg-red-100 text-red-700' }}">
-                            {{ message }}
-                        </div>
-                    {% endfor %}
-                </div>
-            {% endif %}
-        {% endwith %}
-
-        <!-- Form thêm thể loại -->
-        <div class="bg-white p-6 rounded-lg shadow-md mb-10">
-            <h2 class="text-xl font-semibold text-gray-700 mb-4">Thêm thể loại mới</h2>
-            <form action="/admin/add_categories" method="POST" class="space-y-4">
+<body class="bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen font-sans">
+{% include 'components/header.html' %}
+<div class="container mx-auto px-4 py-12 mt-16">
+    <!-- Add Book Modal -->
+    <div class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center hidden z-50 transition-opacity duration-300"
+         id="add-book-modal">
+        <div class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-lg transform transition-all">
+            <h3 class="text-2xl font-bold text-gray-900 mb-6">Thêm sách mới</h3>
+            <form action="{{ url_for('add_book') }}" class="space-y-5" enctype="multipart/form-data" method="POST">
                 <div>
-                    <label for="name" class="block text-gray-700 font-medium mb-2">Tên thể loại:</label>
-                    <input type="text" id="name" name="name" required
-                           class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500">
+                    <label class="block text-gray-700 font-semibold mb-2" for="book-title">Tiêu đề sách:</label>
+                    <input class="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 transition"
+                           id="book-title" name="title" placeholder="Nhập tiêu đề sách" required type="text">
                 </div>
                 <div>
-                    <label for="slug" class="block text-gray-700 font-medium mb-2">Slug:</label>
-                    <input type="text" id="slug" name="slug" required
-                           class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500">
+                    <label class="block text-gray-700 font-semibold mb-2" for="book-author">Tác giả:</label>
+                    <input class="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 transition"
+                           id="book-author" name="author" placeholder="Nhập tên tác giả" required type="text">
                 </div>
-                <button type="submit"
-                        class="w-full flex-1 bg-gradient-to-r from-blue-500 to-blue-600 text-white text-center py-2 rounded-lg hover:from-blue-600 hover:to-blue-700 transition duration-200">
-                    Thêm
-                </button>
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-2" for="book-genre">Thể loại:</label>
+                    <input class="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 transition"
+                           id="book-genre" list="category-list-add" name="genre" placeholder="Chọn hoặc nhập thể loại" required
+                           type="text">
+                    <datalist id="category-list-add">
+                        {% for category_item in categories %}
+                        <option value="{{ category_item.name }}">
+                            {% endfor %}
+                    </datalist>
+                </div>
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-2" for="book-file">File sách (PDF, ePub):</label>
+                    <input accept=".pdf,.epub"
+                           class="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 transition"
+                           id="book-file" name="book_file" type="file">
+                </div>
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-2" for="cover-image-add">Ảnh bìa sách (PNG, JPG,
+                        WEBP):</label>
+                    <input accept=".png,.jpg,.jpeg,.gif,.webp"
+                           class="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 transition"
+                           id="cover-image-add" name="cover_image" type="file">
+                </div>
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-2" for="book-description">Mô tả:</label>
+                    <textarea
+                            class="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 transition"
+                            id="book-description" name="description" placeholder="Nhập mô tả sách" rows="4"></textarea>
+                </div>
+                <div class="flex space-x-4">
+                    <button class="flex-1 bg-gradient-to-r from-green-500 to-emerald-600 text-white py-3 rounded-lg hover:from-green-600 hover:to-emerald-700 transition duration-200 font-semibold"
+                            type="submit">Thêm sách
+                    </button>
+                    <button class="flex-1 bg-gradient-to-r from-gray-400 to-gray-500 text-white py-3 rounded-lg hover:from-gray-500 hover:to-gray-600 transition duration-200 font-semibold"
+                            onclick="closeAddBookModal()" type="button">Hủy
+                    </button>
+                </div>
             </form>
         </div>
+    </div>
 
-        <!-- Danh sách thể loại -->
-        <div class="bg-white p-6 rounded-lg shadow-md">
-            <h2 class="text-xl font-semibold text-gray-700 mb-4">Danh sách thể loại</h2>
-            {% if categories %}
-                <ul class="space-y-4">
-                    {% for category in categories %}
-                        <li class="p-4 bg-gray-50 rounded-md shadow-sm">
-                            <div class="flex items-center justify-between">
-                                <span class="text-gray-800 font-medium">
-                                    {{ category.name }} ({{ category.slug }})
-                                </span>
+    <!-- Edit Book Modal -->
+    <div class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center hidden z-50 transition-opacity duration-300"
+         id="edit-book-modal">
+        <div class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto transform transition-all">
+            <h3 class="text-2xl font-bold text-gray-900 mb-6">Chỉnh sửa sách</h3>
+            <form class="space-y-5" enctype="multipart/form-data" id="edit-book-form" method="POST">
+                <input id="edit-book-id" name="book_id" type="hidden">
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-2" for="edit-book-title">Tiêu đề sách:</label>
+                    <input class="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 transition"
+                           id="edit-book-title" name="title" placeholder="Nhập tiêu đề sách" required type="text">
+                </div>
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-2" for="edit-book-author">Tác giả:</label>
+                    <input class="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 transition"
+                           id="edit-book-author" name="author" placeholder="Nhập tên tác giả" required type="text">
+                </div>
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-2" for="edit-book-genre">Thể loại:</label>
+                    <input class="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 transition"
+                           id="edit-book-genre" list="category-list-edit" name="genre" placeholder="Chọn hoặc nhập thể loại" required
+                           type="text">
+                    <datalist id="category-list-edit">
+                        {% for category_item in categories %}
+                        <option value="{{ category_item.name }}">
+                            {% endfor %}
+                    </datalist>
+                </div>
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-2" for="edit-book-file">File sách (PDF,
+                        ePub):</label>
+                    <input accept=".pdf,.epub"
+                           class="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 transition"
+                           id="edit-book-file" name="book_file" type="file">
+                </div>
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-2">Ảnh bìa sách hiện tại:</label>
+                    <img alt="Ảnh bìa hiện tại" class="w-40 h-auto mb-3 rounded-lg object-contain shadow-sm"
+                         id="current-cover-image-preview" src="#">
+                    <label class="block text-gray-700 font-semibold mb-2" for="edit-cover-image-file">Thay đổi ảnh bìa
+                        (PNG, JPG, WEBP):</label>
+                    <input accept=".png,.jpg,.jpeg,.gif,.webp"
+                           class="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 transition"
+                           id="edit-cover-image-file" name="cover_image" type="file">
+                </div>
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-2" for="edit-book-description">Mô tả:</label>
+                    <textarea
+                            class="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 transition"
+                            id="edit-book-description" name="description" placeholder="Nhập mô tả sách"
+                            rows="4"></textarea>
+                </div>
+                <div class="flex space-x-4">
+                    <button class="flex-1 bg-gradient-to-r from-yellow-500 to-amber-600 text-white py-3 rounded-lg hover:from-yellow-600 hover:to-amber-700 transition duration-200 font-semibold"
+                            type="submit">Lưu thay đổi
+                    </button>
+                    <button class="flex-1 bg-gradient-to-r from-gray-400 to-gray-500 text-white py-3 rounded-lg hover:from-gray-500 hover:to-gray-600 transition duration-200 font-semibold"
+                            onclick="closeEditBookModal()" type="button">Hủy
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Category List -->
+    <div class="bg-white p-8 rounded-2xl shadow-lg">
+        <h2 class="text-2xl font-bold text-gray-900 mb-6">Danh sách thể loại</h2>
+        {% if categories %}
+        <ul class="space-y-6">
+            {% for category in categories %}
+            <li class="p-6 bg-gray-50 rounded-xl shadow-sm transition-all hover:shadow-md">
+                <div class="flex items-center justify-between">
+                    <span class="text-lg font-semibold text-gray-800">{{ category.name }} <span class="text-gray-500">({{ category.slug }})</span></span>
+                    <div class="flex space-x-3">
+                        <button class="px-4 py-2 bg-gradient-to-r from-yellow-500 to-amber-600 text-white rounded-lg hover:from-yellow-600 hover:to-amber-700 transition duration-200 font-medium"
+                                onclick="toggleForm('edit-{{ category.id }}')">Sửa thể loại
+                        </button>
+                        <button class="px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-lg hover:from-blue-600 hover:to-indigo-700 transition duration-200 font-medium"
+                                onclick="openAddBookModal('{{ category.name }}')">Thêm sách
+                        </button>
+                        <form action="/admin/delete_category/{{ category.id }}" method="POST"
+                              onsubmit="return confirm('Bạn có chắc chắn muốn xóa thể loại này không?');">
+                            <button class="px-4 py-2 bg-gradient-to-r from-red-500 to-rose-600 text-white rounded-lg hover:from-red-600 hover:to-rose-700 transition duration-200 font-medium"
+                                    type="submit">Xóa
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                <div class="mt-6">
+                    <h3 class="text-xl font-semibold text-gray-800 mb-4">Sách thuộc thể loại "{{category.name}}"</h3>
+                    {% if category.books_in_category %}
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {% for book_item in category.books_in_category %}
+                        <div class="relative bg-white rounded-xl shadow-lg overflow-hidden book-card transition-all duration-300 hover:shadow-xl">
+                            <a class="block" href="{{ url_for('book_details', book_id=book_item.id) }}">
+                                <div class="p-5">
+                                    <h4 class="text-lg font-bold text-gray-900 mb-2 line-clamp-1">{{ book_item.title
+                                        }}</h4>
+                                    <p class="text-gray-700 text-sm mb-1">Tác giả: <span
+                                            class="font-medium text-gray-800">{{ book_item.author }}</span></p>
+                                    {% if book_item.description %}
+                                    <p class="text-gray-600 text-sm line-clamp-3 mb-4">{{ book_item.description }}</p>
+                                    {% else %}
+                                    <p class="text-gray-500 text-sm italic mb-4">Không có mô tả.</p>
+                                    {% endif %}
+                                </div>
+                            </a>
+                            <div class="p-5 pt-0">
                                 <div class="flex space-x-3">
-                                    <button onclick="toggleForm('edit-{{ category.id }}')"
-                                            class="w-36 flex-1 bg-gradient-to-r from-yellow-500 to-yellow-600 text-white text-center py-2 rounded-lg hover:from-yellow-600 hover:to-yellow-700 transition duration-200">
-                                        Sửa thể loại
+                                    <button class="flex-1 bg-gradient-to-r from-yellow-500 to-amber-600 text-white py-2 rounded-lg hover:from-yellow-600 hover:to-amber-700 transition duration-200 font-medium"
+                                            onclick="openEditBookModal('{{ book_item.id }}', '{{ book_item.title }}', '{{ book_item.author }}', '{{ book_item.category.name if book_item.category else '' }}', '{{ book_item.description|default('')|replace('\n', '\\n')|replace('\r', '') }}', '{{ book_item.cover_image_url|default('') }}')">
+                                        Sửa sách
                                     </button>
-                                    <button onclick="openAddBookModal('{{ category.name }}')"
-                                            class="w-24 bg-gradient-to-r from-blue-500 to-blue-600 text-white text-center py-2 rounded-lg hover:from-blue-600 hover:to-blue-700 transition duration-200">
-                                        Thêm sách
-                                    </button>
-                                    <form action="/admin/delete_category/{{ category.id }}" method="POST" onsubmit="return confirm('Bạn có chắc chắn muốn xóa thể loại này không?');">
-                                        <button type="submit"
-                                                class="w-12 flex-1 bg-gradient-to-r from-red-500 to-red-600 text-white text-center py-2 rounded-lg hover:from-red-600 hover:to-red-700 transition duration-200">
-                                            Xóa
+                                    <form action="{{ url_for('delete_book', book_id=book_item.id) }}" method="POST"
+                                          onsubmit="return confirm('Bạn có chắc chắn muốn xóa sách này không?');">
+                                        <button class="px-4 py-2 bg-gradient-to-r from-red-500 to-rose-600 text-white rounded-lg hover:from-red-600 hover:to-rose-700 transition duration-200 font-medium"
+                                                type="submit">Xóa sách
                                         </button>
                                     </form>
                                 </div>
                             </div>
-
-                            <!-- Danh sách sách thuộc thể loại -->
-                            <div class="mt-6">
-                                <h3 class="text-xl font-semibold text-gray-800 mb-4">Sách thuộc thể loại</h3>
-                                {% if category.books %}
-                                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                                        {% for book in category. Books %}
-                                            <div class="relative bg-white rounded-xl shadow-lg overflow-hidden transform transition-all duration-300 hover:scale-105 hover:shadow-xl">
-                                                <!-- Nội dung sách (có thể nhấp để xem chi tiết) -->
-                                                <a href="{{ url_for('book_details', book_id=book.id) }}" class="block">
-                                                    <div class="p-5">
-                                                        <h4 class="text-lg font-bold text-gray-900 mb-2 line-clamp-1">{{ book.title }}</h4>
-                                                        <p class="text-gray-700 text-sm mb-1">Tác giả: <span class="font-medium text-gray-800">{{ book.author }}</span></p>
-                                                        {% if book.description %}
-                                                            <p class="text-gray-600 text-sm line-clamp-3 mb-4">{{ book.description }}</p>
-                                                        {% else %}
-                                                            <p class="text-gray-500 text-sm italic mb-4">Không có mô tả.</p>
-                                                        {% endif %}
-                                                    </div>
-                                                </a>
-                                                <!-- Nút hành động (nằm ngoài thẻ <a>) -->
-                                                <div class="p-5 pt-0">
-                                                    <div class="flex space-x-3">
-                                                        <button onclick="openEditBookModal('{{ book.id }}', '{{ book.title }}', '{{ book.author }}', '{{ book.genre }}', '{{ book.description|default('') }}')"
-                                                                class="flex-1 bg-gradient-to-r from-yellow-500 to-yellow-600 text-white text-center py-2 rounded-lg hover:from-yellow-600 hover:to-yellow-700 transition duration-200">
-                                                            Sửa sách
-                                                        </button>
-                                                        <form action="/admin/delete_book/{{ book.id }}" method="POST" onsubmit="return confirm('Bạn có chắc chắn muốn xóa sách này không?');">
-                                                            <button type="submit"
-                                                                    class="w-24 flex-1 bg-gradient-to-r from-red-500 to-red-600 text-white text-center py-2 rounded-lg hover:from-red-600 hover:to-red-700 transition duration-200">
-                                                                Xóa sách
-                                                            </button>
-                                                        </form>
-                                                    </div>
-                                                </div>
-                                                <!-- Đường viền trang trí -->
-                                                <div class="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-blue-500 to-blue-700"></div>
-                                            </div>
-                                        {% endfor %}
-                                    </div>
-                                {% else %}
-                                    <p class="text-gray-600 italic text-center">Chưa có sách nào trong thể loại này.</p>
-                                {% endif %}
-                            </div>
-
-                            <!-- Form sửa thể loại (ẩn mặc định) -->
-                            <div id="edit-{{ category.id }}" class="hidden mt-4 p-4 bg-gray-100 rounded-md">
-                                <h3 class="text-lg font-medium text-gray-700 mb-2">Sửa thể loại</h3>
-                                <form action="/admin/edit_category/{{ category.id }}" method="POST" class="space-y-4">
-                                    <div>
-                                        <label for="edit-name-{{ category.id }}" class="block text-gray-700 font-medium mb-2">Tên thể loại:</label>
-                                        <input type="text" id="edit-name-{{ category.id }}" name="name" value="{{ category.name }}" required
-                                               class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500">
-                                    </div>
-                                    <div>
-                                        <label for="edit-slug-{{ category.id }}" class="block text-gray-700 font-medium mb-2">Slug:</label>
-                                        <input type="text" id="edit-slug-{{ category.id }}" name="slug" value="{{ category.slug }}" required
-                                               class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500">
-                                    </div>
-                                    <button type="submit"
-                                            class="w-full bg-yellow-500 text-white py-2 rounded-md hover:bg-yellow-600 transition duration-200">
-                                        Lưu thay đổi
-                                    </button>
-                                </form>
-                            </div>
-                        </li>
-                    {% endfor %}
-                </ul>
-            {% else %}
-                <p class="text-gray-600 text-center">Chưa có thể loại nào.</p>
-            {% endif %}
-        </div>
+                            <div class="absolute top-0 left-0 w-1 h-full gradient-border"></div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p class="text-gray-600 italic text-center">Chưa có sách nào trong thể loại này.</p>
+                    {% endif %}
+                </div>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p class="text-gray-600 text-center">Chưa có thể loại nào.</p>
+        {% endif %}
     </div>
+</div>
+{% include 'components/footer.html' %}
 
-    <!-- Modal thêm sách -->
-    <div id="add-book-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
-        <div class="bg-white p-6 rounded-xl shadow-lg w-full max-w-md transform transition-all">
-            <h3 class="text-lg font-semibold text-gray-800 mb-4">Thêm sách mới</h3>
-            <form action="/admin/add_book" method="POST" enctype="multipart/form-data" class="space-y-4">
-                <div>
-                    <label for="book-title" class="block text-gray-700 font-medium mb-2">Tiêu đề sách:</label>
-                    <input type="text" id="book-title" name="title" required
-                           class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                </div>
-                <div>
-                    <label for="book-author" class="block text-gray-700 font-medium mb-2">Tác giả:</label>
-                    <input type="text" id="book-author" name="author" required
-                           class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                </div>
-                <div>
-                    <label for="book-genre" class="block text-gray-700 font-medium mb-2">Thể loại:</label>
-                    <input type="text" id="book-genre" name="genre" required readonly
-                           class="w-full px-4 py-2 border border-gray-300 rounded-md bg-gray-200">
-                </div>
-                <div>
-                    <label for="book-file" class="block text-gray-700 font-medium mb-2">File sách (PDF, ePub):</label>
-                    <input type="file" id="book-file" name="book_file" accept=".pdf,.epub" required
-                           class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                </div>
-                <div>
-                    <label for="book-description" class="block text-gray-700 font-medium mb-2">Mô tả:</label>
-                    <textarea id="book-description" name="description"
-                              class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
-                </div>
-                <div class="flex space-x-3">
-                    <button type="submit"
-                            class="flex-1 bg-gradient-to-r from-green-500 to-green-600 text-white py-2 rounded-md hover:from-green-600 hover:to-green-700 transition duration-200">
-                        Thêm
-                    </button>
-                    <button type="button" onclick="closeAddBookModal()"
-                            class="flex-1 bg-gradient-to-r from-gray-500 to-gray-600 text-white py-2 rounded-md hover:from-gray-600 hover:to-gray-700 transition duration-200">
-                        Hủy
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
+<script>
+    function openAddBookModal(genreName) {
+        const modal = document.getElementById('add-book-modal');
+        const genreInput = document.getElementById('book-genre');
+        if (genreInput) genreInput.value = genreName;
+        modal.classList.remove('hidden');
+        modal.classList.add('modal-open');
+    }
 
-    <!-- Modal chỉnh sửa sách -->
-    <div id="edit-book-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
-        <div class="bg-white p-6 rounded-xl shadow-lg w-full max-w-md transform transition-all">
-            <h3 class="text-lg font-semibold text-gray-800 mb-4">Chỉnh sửa sách</h3>
-            <form id="edit-book-form" action="/admin/edit_book" method="POST" enctype="multipart/form-data" class="space-y-4">
-                <input type="hidden" id="edit-book-id" name="book_id">
-                <div>
-                    <label for="edit-book-title" class="block text-gray-700 font-medium mb-2">Tiêu đề sách:</label>
-                    <input type="text" id="edit-book-title" name="title" required
-                           class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                </div>
-                <div>
-                    <label for="edit-book-author" class="block text-gray-700 font-medium mb-2">Tác giả:</label>
-                    <input type="text" id="edit-book-author" name="author" required
-                           class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                </div>
-                <div>
-                    <label for="edit-book-genre" class="block text-gray-700 font-medium mb-2">Thể loại:</label>
-                    <input type="text" id="edit-book-genre" name="genre" required readonly
-                           class="w-full px-4 py-2 border border-gray-300 rounded-md bg-gray-200">
-                </div>
-                <div>
-                    <label for="edit-book-file" class="block text-gray-700 font-medium mb-2">File sách (PDF, ePub) - Để trống nếu không thay đổi:</label>
-                    <input type="file" id="edit-book-file" name="book_file" accept=".pdf,.epub"
-                           class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                </div>
-                <div>
-                    <label for="edit-book-description" class="block text-gray-700 font-medium mb-2">Mô tả:</label>
-                    <textarea id="edit-book-description" name="description"
-                              class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
-                </div>
-                <div class="flex space-x-3">
-                    <button type="submit"
-                            class="flex-1 bg-gradient-to-r from-yellow-500 to-yellow-600 text-white py-2 rounded-md hover:from-yellow-600 hover:to-yellow-700 transition duration-200">
-                        Lưu thay đổi
-                    </button>
-                    <button type="button" onclick="closeEditBookModal()"
-                            class="flex-1 bg-gradient-to-r from-gray-500 to-gray-600 text-white py-2 rounded-md hover:from-gray-600 hover:to-gray-700 transition duration-200">
-                        Hủy
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
+    function openEditBookModal(bookId, title, author, genreName, description, currentCoverImageUrl) {
+        const modal = document.getElementById('edit-book-modal');
+        const form = document.getElementById('edit-book-form');
+        form.action = `/admin/edit_book/${bookId}`;
 
-    <!-- Footer -->
-    {% include 'components/footer.html' %}
+        document.getElementById('edit-book-id').value = bookId;
+        document.getElementById('edit-book-title').value = title;
+        document.getElementById('edit-book-author').value = author;
+        document.getElementById('edit-book-genre').value = genreName;
+        document.getElementById('edit-book-description').value = description.replace(/\\n/g, '\n');
 
-    <!-- JavaScript để toggle form và modal -->
-    <script>
-        function toggleForm(formId) {
-            const form = document.getElementById(formId);
-            if (form.classList.contains('hidden')) {
-                form.classList.remove('hidden');
-            } else {
-                form.classList.add('hidden');
-            }
-        }
+        const coverPreview = document.getElementById('current-cover-image-preview');
+        const defaultCover = "{{ CLOUDINARY_DEFAULT_BOOK_COVER_URL | safe }}";
 
-        function openAddBookModal(genre) {
-            const modal = document.getElementById('add-book-modal');
-            const genreInput = document.getElementById('book-genre');
-            genreInput. Value = genre; // Gán giá trị thể loại vào input
-            modal.classList.remove('hidden');
-            modal.classList.add('modal-open'); // Thêm class để chạy animation mở
-        }
+        coverPreview.src = currentCoverImageUrl && currentCoverImageUrl !== defaultCover && currentCoverImageUrl.startsWith('http') ? currentCoverImageUrl : defaultCover;
+        coverPreview.style.display = 'block';
 
-        function closeAddBookModal() {
-            const modal = document.getElementById('add-book-modal');
-            modal.classList.add('modal-close'); // Thêm class để chạy animation đóng
-            modal.addEventListener('animationend', function handler() {
-                modal.classList.add('hidden');
-                modal.classList.remove('modal-close'); // Xóa class animation để có thể tái sử dụng
-                const form = modal.querySelector('form'); // Lấy form trong modal
-                form.reset(); // Reset toàn bộ form
-                modal.removeEventListener('animationend', handler); // Xóa listener sau khi chạy
-            }, { once: true });
-        }
+        document.getElementById('edit-book-file').value = '';
+        document.getElementById('edit-cover-image-file').value = '';
 
-        function openEditBookModal(bookId, title, author, genre, description) {
-            const modal = document.getElementById('edit-book-modal');
-            const form = document.getElementById('edit-book-form');
-            form.action = `/admin/edit_book/${bookId}`; // Cập nhật action của form
-            document.getElementById('edit-book-id').value = bookId;
-            document.getElementById('edit-book-title').value = title;
-            document.getElementById('edit-book-author').value = author;
-            document.getElementById('edit-book-genre').value = genre;
-            document.getElementById('edit-book-description').value = description;
-            modal.classList.remove('hidden');
-            modal.classList.add('modal-open'); // Thêm class để chạy animation mở
-        }
+        modal.classList.remove('hidden');
+        modal.classList.add('modal-open');
+    }
 
-        function closeEditBookModal() {
-            const modal = document.getElementById('edit-book-modal');
-            modal.classList.add('modal-close'); // Thêm class để chạy animation đóng
-            modal.addEventListener('animationend', function handler() {
-                modal.classList.add('hidden');
-                modal.classList.remove('modal-close'); // Xóa class animation để có thể tái sử dụng
-                const form = modal.querySelector('form'); // Lấy form trong modal
-                form.reset(); // Reset toàn bộ form
-                modal.removeEventListener('animationend', handler); // Xóa listener sau khi chạy
-            }, { once: true });
-        }
-    </script>
+    function closeAddBookModal() {
+        const modal = document.getElementById('add-book-modal');
+        modal.classList.add('hidden');
+        modal.classList.remove('modal-open');
+    }
+
+    function closeEditBookModal() {
+        const modal = document.getElementById('edit-book-modal');
+        modal.classList.add('hidden');
+        modal.classList.remove('modal-open');
+    }
+
+    function toggleForm(formId) {
+        const form = document.getElementById(formId);
+        form.classList.toggle('hidden');
+    }
+</script>
 </body>
 </html>

@@ -1,12 +1,16 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
-from models import db, User, Category, Book, Review  # Ensure these are defined in models.py
+from sqlalchemy import desc, func # Đảm bảo func được import từ sqlalchemy
+from models import db, User, Category, Book, Review
 from reading import reading_bp  # Import Blueprint from reading.py
 from readEpub import readEpub_bp
 from search_books import search_bp
 import os
 from flask_migrate import Migrate
+import cloudinary
+import cloudinary.uploader
+import cloudinary.api
 
 # Sau khi khởi tạo db
 
@@ -48,6 +52,26 @@ with app.app_context():
 
 app.secret_key = 'supersecretkey'  # For session management
 
+cloudinary.config(
+    cloud_name = "durtbvrao",
+    api_key = "255949239751672",
+    api_secret = "bFMvtdA8hl5DoFibGFEMs6rA2OA",
+    secure = True # Nên dùng HTTPS
+)
+
+# Các định dạng file cho phép (giữ nguyên hoặc điều chỉnh)
+ALLOWED_EXTENSIONS_BOOK_FILES = {'.pdf', '.epub'}
+ALLOWED_EXTENSIONS_IMAGES = {'.png', '.jpg', '.jpeg', '.gif', '.webp'}
+
+def allowed_file(filename, allowed_extensions):
+    return '.' in filename and \
+           os.path.splitext(filename)[1].lower() in allowed_extensions
+
+# ... (db.init_app(app), migrate = Migrate(app, db), các blueprint) ...
+
+# URL ảnh bìa mặc định trên Cloudinary (thay thế bằng URL thực tế của bạn)
+CLOUDINARY_DEFAULT_BOOK_COVER_URL = "https://res.cloudinary.com/YOUR_CLOUD_NAME/image/upload/vXXXXXXXXXX/folder/default_book_cover.png" # VÍ DỤ
+
 # Initialize session data
 @app.before_request
 def initialize_session():
@@ -59,8 +83,22 @@ def initialize_session():
 # Routes
 @app.route('/')
 def home():
-    books = Book.query.all()
-    return render_template('home.html', books=books)
+    # Sách mới nhất (giữ nguyên hoặc điều chỉnh logic của bạn)
+    newest_books = Book.query.order_by(Book.id.desc()).limit(10).all()
+
+    # Sách được yêu thích nhất (đánh giá cao nhất)
+    min_reviews_for_top_list = 2 # Số lượng đánh giá tối thiểu để sách được xét
+    top_rated_books = Book.query \
+        .join(Review, Book.id == Review.book_id) \
+        .group_by(Book.id) \
+        .having(func.count(Review.id) >= min_reviews_for_top_list) \
+        .order_by(func.avg(Review.rating).desc(), func.count(Review.id).desc()) \
+        .limit(10) \
+        .all()
+    # .order_by(func.avg(Review.rating).desc(), func.count(Review.id).desc()):
+    # Sắp xếp theo đánh giá trung bình giảm dần, nếu bằng nhau thì ưu tiên sách có nhiều lượt đánh giá hơn.
+
+    return render_template('home.html', newest_books=newest_books, top_rated_books=top_rated_books)
 
 @app.route('/favorites')
 def favorites():
@@ -306,32 +344,65 @@ def admin_panel():
     for category in categories:
         category.books = Book.query.filter(Book.category.has(name=category.name)).all()
 
-    return render_template('admin.html', categories=categories)
+    return render_template('admin.html', categories=categories, cloudinary_default_cover=CLOUDINARY_DEFAULT_BOOK_COVER_URL)
 
-
-# Book management routes
 @app.route('/admin/add_book', methods=['POST'])
 def add_book():
+    # ... (kiểm tra quyền admin)
+    # ... (lấy title, author, category_name, description)
     title = request.form.get('title')
     author = request.form.get('author')
-    category = request.form.get('genre')
+    category_name = request.form.get('genre')
     description = request.form.get('description')
-    file = request.files.get('book_file')
+    book_file_data = request.files.get('book_file') # File sách (epub, pdf)
+    cover_image_file = request.files.get('cover_image') # Ảnh bìa
 
-    if not file or not allowed_file(file.filename):
-        flash('Vui lòng upload file PDF hoặc ePub hợp lệ!', 'error')
+    category = Category.query.filter_by(name=category_name).first()
+    if not category:
+        flash(f'Thể loại "{category_name}" không tồn tại.', 'danger')
         return redirect(url_for('admin_panel'))
 
-    filename = secure_filename(file.filename)
-    content = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-    file.save(content)
+    book_content_blob = None # Để lưu nội dung file sách
+    if book_file_data and book_file_data.filename != '' and allowed_file(book_file_data.filename, ALLOWED_EXTENSIONS_BOOK_FILES):
+        book_content_blob = book_file_data.read()
+    elif book_file_data and book_file_data.filename != '':
+        flash('Định dạng file sách không hợp lệ. Chỉ chấp nhận PDF, EPUB.', 'warning')
+
+    # Xử lý upload ảnh bìa lên Cloudinary
+    cover_image_url_to_save = CLOUDINARY_DEFAULT_BOOK_COVER_URL # Mặc định
+
+    if cover_image_file and cover_image_file.filename != '':
+        if allowed_file(cover_image_file.filename, ALLOWED_EXTENSIONS_IMAGES):
+            if True: # Chỉ thử upload nếu Cloudinary được cấu hình
+                try:
+                    upload_result = cloudinary.uploader.upload(
+                        cover_image_file,
+                        folder="vbook_covers",  # Thư mục trên Cloudinary (tùy chọn)
+                        # public_id=f"book_{secure_filename(title)}_{category.slug}", # Tên file tùy chỉnh (tùy chọn)
+                        overwrite=True,
+                        resource_type="image"
+                    )
+                    uploaded_url = upload_result.get('secure_url')
+                    if uploaded_url:
+                        cover_image_url_to_save = uploaded_url
+                    else:
+                        flash('Upload ảnh bìa lên Cloudinary thất bại. Sử dụng ảnh mặc định.', 'warning')
+                        app.logger.error(f"Cloudinary upload failed, no secure_url. Result: {upload_result}")
+                except Exception as e:
+                    flash(f'Lỗi khi upload ảnh bìa lên Cloudinary: {str(e)}. Sử dụng ảnh mặc định.', 'danger')
+                    app.logger.error(f"Cloudinary upload exception: {e}")
+            else:
+                flash('Cloudinary chưa được cấu hình. Không thể upload ảnh bìa. Sử dụng ảnh mặc định.', 'danger')
+        else:
+            flash('Định dạng file ảnh bìa không hợp lệ. Sử dụng ảnh mặc định.', 'warning')
 
     new_book = Book(
         title=title,
         author=author,
-        genre=category,
+        category_id=category.id,
         description=description,
-        content=f"/{content}"
+        content=book_content_blob, # Nội dung file sách
+        cover_image_url=cover_image_url_to_save
     )
     db.session.add(new_book)
     db.session.commit()
@@ -341,23 +412,54 @@ def add_book():
 
 @app.route('/admin/edit_book/<int:book_id>', methods=['POST'])
 def edit_book(book_id):
+    # ... (kiểm tra quyền admin)
     book = Book.query.get_or_404(book_id)
-    book.title = request.form.get('title')
-    book.author = request.form.get('author')
-    book.genre = request.form.get('genre')
-    book.description = request.form.get('description')
+    # ... (cập nhật title, author, category, description)
+    book.title = request.form.get('title', book.title)
+    book.author = request.form.get('author', book.author)
+    new_category_name = request.form.get('genre')
+    book.description = request.form.get('description', book.description)
 
-    file = request.files.get('book_file')
-    if file and file.filename:
-        if not allowed_file(file.filename):
-            flash('Chỉ hỗ trợ file PDF hoặc ePub!', 'error')
-            return redirect(url_for('admin_panel'))
-        if book.content and os.path.exists(book.content[1:]):
-            os.remove(book.content[1:])
-        filename = secure_filename(file.filename)
-        content = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-        file.save(content)
-        book.content = f"/{content}"
+    if new_category_name:
+        category = Category.query.filter_by(name=new_category_name).first()
+        if category:
+            book.category_id = category.id
+
+    book_file_data = request.files.get('book_file') # File sách (epub, pdf)
+    if book_file_data and book_file_data.filename != '' and allowed_file(book_file_data.filename, ALLOWED_EXTENSIONS_BOOK_FILES):
+        book.content = book_file_data.read() # Cập nhật nội dung file sách
+    elif book_file_data and book_file_data.filename != '':
+        flash('Định dạng file sách mới không hợp lệ. File sách không thay đổi.', 'warning')
+
+    # Xử lý cập nhật ảnh bìa
+    cover_image_file = request.files.get('cover_image')
+    if cover_image_file and cover_image_file.filename != '':
+        if allowed_file(cover_image_file.filename, ALLOWED_EXTENSIONS_IMAGES):
+            if True: # Chỉ thử upload nếu Cloudinary được cấu hình
+                try:
+                    # Lưu ý: Việc xóa ảnh cũ trên Cloudinary cần public_id.
+                    # Nếu bạn muốn xóa ảnh cũ, bạn cần lưu public_id khi upload
+                    # hoặc có cơ chế trích xuất public_id từ URL.
+                    # Hiện tại, chúng ta sẽ chỉ upload ảnh mới và ghi đè URL.
+                    upload_result = cloudinary.uploader.upload(
+                        cover_image_file,
+                        folder="vbook_covers",
+                        overwrite=True,
+                        resource_type="image"
+                    )
+                    uploaded_url = upload_result.get('secure_url')
+                    if uploaded_url:
+                        book.cover_image_url = uploaded_url
+                    else:
+                        flash('Upload ảnh bìa mới lên Cloudinary thất bại.', 'warning')
+                        app.logger.error(f"Cloudinary edit upload failed, no secure_url. Result: {upload_result}")
+                except Exception as e:
+                    flash(f'Lỗi khi upload ảnh bìa mới lên Cloudinary: {str(e)}', 'danger')
+                    app.logger.error(f"Cloudinary edit upload exception: {e}")
+            else:
+                flash('Cloudinary chưa được cấu hình. Không thể cập nhật ảnh bìa.', 'danger')
+        else:
+            flash('Định dạng file ảnh bìa mới không hợp lệ. Ảnh bìa không thay đổi.', 'warning')
 
     db.session.commit()
     flash('Chỉnh sửa sách thành công!', 'success')

@@ -18,7 +18,8 @@
         <h1 class="text-2xl font-bold mb-4">Thông tin tài khoản</h1>
 
         <div class="flex items-center space-x-4">
-            <img alt="Avatar" class="w-20 h-20 rounded-full border" src="{{ user.avatar_url }}">
+            <img alt="Avatar" class="w-20 h-20 rounded-full border" onerror="this.src='https://ui-avatars.com/api/?name=User&background=0D8ABC&color=fff&size=128';"
+                             src="{{ session['avatar_url'] if 'avatar_url' in session and session['avatar_url'].startswith('http') else 'https://ui-avatars.com/api/?name=User&background=0D8ABC&color=fff&size=128' }}">
             <div>
                 <p class="text-lg font-semibold">{{ user.username }}</p>
                 <p class="text-gray-600">{{ user.email }}</p>

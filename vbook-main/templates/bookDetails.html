@@ -19,8 +19,12 @@
 
     <div class="bg-white p-6 rounded-lg shadow-md flex gap-10">
         <!-- Hình ảnh sách -->
-        <img alt="{{ book.title }}" class="w-64 h-96 object-cover rounded-lg shadow-md"
-             src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQoaj6IKVpPmobkqsRiNqlcfQ9kepfgkoTSwQ&s">
+        <div class="w-full md:w-1/3 lg:w-1/4 flex justify-center items-start">
+            <img alt="Bìa sách {{ book.title }}"
+                 class="w-64 h-96 object-cover rounded-lg shadow-md"
+                 onerror="this.onerror=null; this.src='{{ CLOUDINARY_DEFAULT_BOOK_COVER_URL }}';"
+                 src="{{ book.cover_image_url or CLOUDINARY_DEFAULT_BOOK_COVER_URL }}">
+        </div>
 
         <!-- Thông tin sách -->
         <div class="flex-1">
@@ -118,7 +122,8 @@
             </form>
             {% else %}
             <p class="text-gray-700 mt-2">Vui lòng <a class="text-sky-600 hover:underline"
-                                                      href="{{ url_for('login', next=request.url) }}">đăng nhập</a> để gửi đánh
+                                                      href="{{ url_for('login', next=request.url) }}">đăng nhập</a> để
+                gửi đánh
                 giá.</p>
             {% endif %}
         </div>

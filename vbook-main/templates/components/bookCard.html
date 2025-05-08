@@ -1,8 +1,18 @@
-<div class="bg-white shadow-md rounded-lg p-4 w-80">
-    <a href= "{{ url_for('book_details', book_id = book.id) }}">
-        <img src="https://png.pngtree.com/thumb_back/fh260/background/20210316/pngtree-vertical-version-of-cherry-blossom-photography-romantic-pink-image_586839.jpg" alt="{{ book.title }}"
-            class="w-full cursor-pointer h-full object-cover rounded-lg">
+<div class="bg-white shadow-md rounded-lg p-4 w-80 h-[450px] flex flex-col"> {# Chiều cao cố định cho card #}
+    <a class="block mb-2 overflow-hidden rounded-lg"
+       href="{{ url_for('book_details', book_id=book.id) }}">
+        <div class="relative w-full h-0" style="padding-top: 150%;"> <!-- Giữ tỷ lệ 2:3 -->
+            <img alt="Bìa sách {{ book.title }}"
+                 class="absolute top-0 left-0 w-full h-full object-cover transition-transform duration-300 hover:scale-105"
+                 onerror="this.onerror=null; this.src='{{ CLOUDINARY_DEFAULT_BOOK_COVER_URL }}';"
+                 src="{{ book.cover_image_url or CLOUDINARY_DEFAULT_BOOK_COVER_URL }}">
+        </div>
     </a>
-    <h3 class="mt-2 font-bold text-lg">{{ book.title }}</h3>
-    <p class="text-gray-600 text-sm">{{ book.author }}</p>
+    <div class="flex-grow flex flex-col justify-between">
+        <div>
+            <h3 class="mt-1 font-bold text-lg truncate" title="{{ book.title }}">{{ book.title }}</h3>
+            <p class="text-gray-600 text-sm truncate" title="{{ book.author }}">{{ book.author }}</p>
+        </div>
+        {# Bạn có thể thêm các thông tin khác hoặc nút ở đây nếu muốn #}
+    </div>
 </div>
