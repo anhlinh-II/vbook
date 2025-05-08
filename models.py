@@ -11,6 +11,7 @@ class Book(db.Model):
     description = db.Column(db.Text, nullable=True)
     file_path = db.Column(db.String(500), nullable=True)  # Giữ nguyên kiểu String
     content = db.Column(db.LargeBinary, nullable=True)  # Thêm cột mới cho dữ liệu binary
+    cover_path = db.Column(db.String(500), nullable=True)
 
     category_id = db.Column(db.Integer, db.ForeignKey('category.id'), nullable=False)
     category = db.relationship('Category', backref=db.backref('books', lazy=True))
