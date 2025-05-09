@@ -19,8 +19,15 @@
 
     <div class="bg-white p-6 rounded-lg shadow-md flex gap-10">
         <!-- Hình ảnh sách -->
-        <img alt="{{ book.title }}" class="w-64 h-96 object-cover rounded-lg shadow-md" src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQoaj6IKVpPmobkqsRiNqlcfQ9kepfgkoTSwQ&s">
-
+                {% if book.cover_path %}
+        <img src="{{ book.cover_path }}"
+             alt="{{ book.title }}"
+             class="w-64 h-96 object-cover rounded-lg shadow-md" >
+        {% else %}
+        <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQoaj6IKVpPmobkqsRiNqlcfQ9kepfgkoTSwQ&s"
+             alt="{{ book.title }}"
+             class="w-64 h-96 object-cover rounded-lg shadow-md" >
+        {% endif %}
         <!-- Thông tin sách -->
         <div class="flex-1">
             <h2 class="text-4xl font-bold text-gray-800">{{ book.title }}</h2>

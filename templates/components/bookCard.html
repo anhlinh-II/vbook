@@ -1,7 +1,15 @@
+
 <div class="bg-white shadow-md rounded-lg p-4 w-80">
-    <a href= "{{ url_for('book_details', book_id = book.id) }}">
-        <img src="https://png.pngtree.com/thumb_back/fh260/background/20210316/pngtree-vertical-version-of-cherry-blossom-photography-romantic-pink-image_586839.jpg" alt="{{ book.title }}"
-            class="w-full cursor-pointer h-full object-cover rounded-lg">
+    <a href="{{ url_for('book_details', book_id=book.id) }}">
+        {% if book.cover_path %}
+        <img src="{{ book.cover_path }}"
+             alt="{{ book.title }}"
+             class="w-full cursor-pointer h-full object-cover rounded-lg">
+        {% else %}
+        <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQoaj6IKVpPmobkqsRiNqlcfQ9kepfgkoTSwQ&s"
+             alt="{{ book.title }}"
+             class="w-full cursor-pointer h-full object-cover rounded-lg">
+        {% endif %}
     </a>
     <h3 class="mt-2 font-bold text-lg">{{ book.title }}</h3>
     <p class="text-gray-600 text-sm">{{ book.author }}</p>

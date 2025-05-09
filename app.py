@@ -57,10 +57,15 @@ def initialize_session():
         session['favorites'] = []
 
 # Routes
+from sqlalchemy import case
+
 @app.route('/')
 def home():
-    books = Book.query.all()
+    books = Book.query.order_by(
+        case((Book.cover_path == None, 1), else_=0)
+    ).all()
     return render_template('home.html', books=books)
+
 
 @app.route('/favorites')
 def favorites():
