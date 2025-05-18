@@ -1,16 +1,16 @@
-
-<div class="bg-white shadow-md rounded-lg p-4 w-80">
-    <a href="{{ url_for('book_details', book_id=book.id) }}">
-        {% if book.cover_path %}
-        <img src="{{ book.cover_path }}"
-             alt="{{ book.title }}"
-             class="w-full cursor-pointer h-full object-cover rounded-lg">
-        {% else %}
-        <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQoaj6IKVpPmobkqsRiNqlcfQ9kepfgkoTSwQ&s"
-             alt="{{ book.title }}"
-             class="w-full cursor-pointer h-full object-cover rounded-lg">
-        {% endif %}
+<div class="bg-white shadow-md rounded-lg p-4 w-80 h-[450px] flex flex-col">
+    <a class="block h-[300px] mb-2 overflow-hidden rounded-lg" {# Gán chiều cao cố định cho khu vực chứa ảnh #}
+       href="{{ url_for('book_details', book_id=book.id) }}">
+        <img alt="Bìa sách {{ book.title }}"
+             class="w-full h-full object-cover transition-transform duration-300 hover:scale-105" {# Ảnh sẽ lấp đầy thẻ <a> #}
+             onerror="this.onerror=null; this.src='{{ CLOUDINARY_DEFAULT_BOOK_COVER_URL }}';"
+             src="{{ book.cover_path or CLOUDINARY_DEFAULT_BOOK_COVER_URL }}">
     </a>
-    <h3 class="mt-2 font-bold text-lg">{{ book.title }}</h3>
-    <p class="text-gray-600 text-sm">{{ book.author }}</p>
+    <div class="flex-grow flex flex-col justify-between"> {# Phần này sẽ chiếm không gian còn lại #}
+        <div>
+            <h3 class="mt-1 font-bold text-lg truncate" title="{{ book.title }}">{{ book.title }}</h3>
+            <p class="text-gray-600 text-sm truncate" title="{{ book.author }}">{{ book.author }}</p>
+        </div>
+        {# Bạn có thể thêm các thông tin khác hoặc nút ở đây nếu muốn #}
+    </div>
 </div>

@@ -1,24 +1,70 @@
-<div x-data="carouselData()" class="relative w-full overflow-hidden">
-    <!-- Carousel container -->
+<div x-data="{
+        currentIndex: 0,
+        bookWidth: 340, /* Điều chỉnh lại chiều rộng thực tế của 1 card + margin. Ví dụ: w-[320px] + mx-2 (8px*2=16px) -> 336. Hãy đo lại cho chính xác */
+        maxIndex: {{ (books|length - 1) if books|length > 0 else 0 }}, /* SỬA Ở ĐÂY */
+        containerWidth: {{ (books|length) * 340 }}, /* Tổng chiều rộng của container sách */
+        viewportWidth: 0, /* Sẽ được tính khi component được mount */
+        booksInView: 0, /* Số sách có thể thấy trong viewport */
+        effectiveMaxIndex: 0, /* maxIndex thực tế dựa trên số sách có thể hiển thị */
+        init() {
+            /* Đảm bảo $refs.carouselContainer tồn tại trước khi truy cập offsetWidth */
+            if (this.$refs.carouselContainer) {
+                this.viewportWidth = this.$refs.carouselContainer.offsetWidth;
+            } else {
+                this.viewportWidth = window.innerWidth; /* Giá trị dự phòng */
+                console.warn('carouselContainer ref not found, using window.innerWidth');
+            }
+            this.booksInView = Math.max(1, Math.floor(this.viewportWidth / this.bookWidth)); /* booksInView phải ít nhất là 1 */
+
+            /* Nếu books|length < booksInView thì không cần trượt, maxIndex = 0 */
+            /* Ngược lại, số lần trượt tối đa là books|length - booksInView */
+            if ({{ books|length }} > 0) {
+                 this.effectiveMaxIndex = Math.max(0, {{ books|length }} - this.booksInView);
+            } else {
+                 this.effectiveMaxIndex = 0;
+            }
+
+            if (this.currentIndex > this.effectiveMaxIndex) {
+                this.currentIndex = this.effectiveMaxIndex;
+            }
+        },
+        prev() {
+            this.currentIndex = Math.max(this.currentIndex - 1, 0);
+        },
+        next() {
+            this.currentIndex = Math.min(this.currentIndex + 1, this.effectiveMaxIndex);
+        }
+    }"
+    x-init="init()"
+    class="relative w-full overflow-hidden"
+    x-ref="carouselContainer">
+
     <div class="flex transition-transform duration-300 ease-in-out"
-        :style="'transform: translateX(-' + (currentIndex * 340) + 'px)'">
-        {% for book in books %}
-            <div class="w-[400px] mx-2">
-                {% with book=book %}
+        :style="'transform: translateX(-' + (currentIndex * bookWidth) + 'px)'">
+        {% for book_item in books %} {# Đổi tên biến để rõ ràng hơn #}
+            <div class="w-[320px] shrink-0 mx-2"> {# Thêm shrink-0 để các item không bị co lại #}
+                {% with book=book_item %}
                     {% include 'components/bookCard.html' %}
                 {% endwith %}
             </div>
         {% endfor %}
     </div>
 
-    <!-- Navigation buttons -->
-    <button @click="prev()" class="absolute left-0 top-1/2 transform -translate-y-1/2 bg-gray-700 text-white p-2 rounded-l-md">
+    {% if books|length > 0 %}
+    <button @click="prev()"
+            :disabled="currentIndex === 0"
+            class="absolute left-0 top-1/2 transform -translate-y-1/2 bg-gray-700 text-white p-2 rounded-l-md disabled:opacity-50 disabled:cursor-not-allowed"
+            x-show="effectiveMaxIndex > 0">
         &#10094;
     </button>
 
-    <button @click="next()" class="absolute right-0 top-1/2 transform -translate-y-1/2 bg-gray-700 text-white p-2 rounded-r-md">
+    <button @click="next()"
+            :disabled="currentIndex === effectiveMaxIndex"
+            class="absolute right-0 top-1/2 transform -translate-y-1/2 bg-gray-700 text-white p-2 rounded-r-md disabled:opacity-50 disabled:cursor-not-allowed"
+            x-show="effectiveMaxIndex > 0">
         &#10095;
     </button>
+    {% endif %}
 </div>
 
 <script>

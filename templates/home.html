@@ -10,10 +10,8 @@
 </head>
 <body class="bg-gray-100">
 
-<!-- Header cố định -->
 {% include 'components/header.html' %}
 
-<!-- Banner -->
 <section class="mx-20 mt-32 h-full relative">
     <img alt="VBook Banner"
          class="h-full w-full object-cover"
@@ -34,12 +32,30 @@
     <div class="flex flex-col items-center justify-between border-t pt-5 border-sky-500">
         <span class="text-3xl font-bold text-sky-600">Mới Nhất</span>
         <div class="w-full mt-5">
-            {% with books=books %}
-            {% include 'components/listbook.html' %}
-            {% endwith %}
+            {# Truyền danh sách newest_books vào component, component sẽ dùng biến 'books' #}
+            {% if newest_books %}
+                {% with books=newest_books %}
+                    {% include 'components/listbook.html' %}
+                {% endwith %}
+            {% else %}
+                <p class="text-center text-gray-500">Chưa có sách mới.</p>
+            {% endif %}
         </div>
     </div>
 
+    <div class="flex flex-col items-center justify-between border-t pt-10 mt-10 border-sky-500">
+        <span class="text-3xl font-bold text-sky-600">Được Yêu Thích Nhất</span>
+        <div class="w-full mt-5">
+            {# Truyền danh sách top_rated_books vào component, component sẽ dùng biến 'books' #}
+            {% if top_rated_books %}
+                {% with books=top_rated_books %}
+                    {% include 'components/listbook.html' %}
+                {% endwith %}
+            {% else %}
+                <p class="text-center text-gray-500">Chưa có sách nào được đánh giá cao hoặc đủ điều kiện hiển thị.</p>
+            {% endif %}
+        </div>
+    </div>
 </main>
 
 <footer class="mt-10">
